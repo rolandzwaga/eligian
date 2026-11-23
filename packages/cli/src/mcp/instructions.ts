@@ -6,12 +6,13 @@
  * docs pointer and the docs index.
  *
  * Each phase has its own instructions string naming only the tools and chunk ids that
- * phase ships; `server.ts` picks it by `MCP_PHASE`.
+ * phase ships; `server.ts` picks it by `MCP_PHASE`. String 4 is spec 059 Phase 3's (FR-001
+ * to FR-006): the brief interview comes first.
  */
 import type { IndexEntry } from './knowledge/types.js';
 
 /** The build-time phase constant: which tools and instructions this server ships. */
-export const MCP_PHASE = 3 as const;
+export const MCP_PHASE = 4 as const;
 
 const PREAMBLE = `Eligian: a DSL compiled to Eligius presentation JSON (timelines of timed actions; an action is a
 chain of operations over one shared operationData bag). No model was trained on Eligian. Do not
@@ -21,11 +22,13 @@ write it from memory. If a construct is not in \`syntax-cheatsheet\`, Eligian do
 const WORKFLOW_INTRO = `Use these tools whenever a task touches .eligian files, layout HTML, CSS, locales.json or a host
 module of an Eligius presentation:`;
 
+const OPERATIONS_LINE = `- \`eligian_operations\`: BEFORE calling any operation not in your session so far; batch with
+  names:[...]. Cards lead with NEEDS / PROVIDES / ERASES.`;
+
 const DOCS_LINE = `- \`eligian_docs\`: FIRST for a new presentation: ids \`storyboard\`, \`decisions\`, \`project-layout\`,
   then write STORYBOARD.md. Before each construct you have not written this session: its map-*
   card (index) or body (detail:true). Read \`operations-index\` once.
-- \`eligian_operations\`: BEFORE calling any operation not in your session so far; batch with
-  names:[...]. Cards lead with NEEDS / PROVIDES / ERASES.
+${OPERATIONS_LINE}
 - \`eligian_init\`: scaffold a new project from a starter (writes files; next steps in the reply).`;
 
 const CHECK_LINE = `- \`eligian_check\`: after EVERY edit until 0 errors and 0 warnings. Each diagnostic carries its fix.
@@ -44,13 +47,48 @@ ${CHECK_LINE}
   whenever behaviour surprises you.`;
 
 /** §3.5's final workflow verbatim (I-8), plus the determinism step on the smoke line. */
+const PROJECT_LINE = `- \`eligian_project\`: the ids, classes, locale keys, asset files and host names you may reference.
+  Call before writing selectors; layout + CSS come before timelines.`;
+
+const SMOKE_LINE_3 = `- \`eligian_smoke\`: after fmt; pass a scenario for every interaction you wrote (click, key, seek), then determinism:true.`;
+
+const COMPILE_LINE_3 = `- \`eligian_compile\`: once after your first timeline passes check (select it, explain:true), and whenever behaviour surprises you.`;
+
 const WORKFLOW_PHASE_3 = `${WORKFLOW_INTRO}
 ${DOCS_LINE}
-- \`eligian_project\`: the ids, classes, locale keys, asset files and host names you may reference.
-  Call before writing selectors; layout + CSS come before timelines.
+${PROJECT_LINE}
 ${CHECK_LINE}
-- \`eligian_smoke\`: after fmt; pass a scenario for every interaction you wrote (click, key, seek), then determinism:true.
-- \`eligian_compile\`: once after your first timeline passes check (select it, explain:true), and whenever behaviour surprises you.`;
+${SMOKE_LINE_3}
+${COMPILE_LINE_3}`;
+
+/**
+ * Spec 059 Phase 3 (FR-002): the brief comes first, for a new presentation and for an
+ * addition; nothing is written before it is approved.
+ */
+const BRIEF_LINE = `- \`eligian_brief\`: FIRST for a new presentation or an addition (new view, language, first host
+  module). Write nothing until the brief is approved.`;
+
+/**
+ * FR-004: the storyboard ids are read once the brief is confirmed. An action sits inside a
+ * span holding a space, never backticked alone (plan P8). Spec 059 FR-052/FR-053 and FR-056
+ * grew the decisions rule; this line and the brief line were tightened to keep the AGENTS.md
+ * block within 8,192 bytes.
+ */
+const DOCS_LINE_4 = `- \`eligian_docs\`: \`interview\` before the first round; once the brief is confirmed,
+  \`storyboard\`, \`decisions\`, \`project-layout\`, draft STORYBOARD.md, call \`action: approve-storyboard\`.
+  Before each construct new this session: its map-* card or body (detail:true). Read
+  \`operations-index\` once.
+- \`eligian_operations\`: BEFORE any operation new this session; batch with names:[...]. Cards
+  lead with NEEDS / PROVIDES / ERASES.
+- \`eligian_init\`: a starter, once the brief is approved.`;
+
+const WORKFLOW_PHASE_4 = `${WORKFLOW_INTRO}
+${BRIEF_LINE}
+${DOCS_LINE_4}
+${PROJECT_LINE}
+${CHECK_LINE}
+${SMOKE_LINE_3}
+${COMPILE_LINE_3}`;
 
 const ENGINE_RULES = `Rules the engine imposes:
 1. A fired block has nothing selected. Timeline, lifecycle and init blocks start with {};
@@ -69,6 +107,23 @@ Review STORYBOARD.md against the timelines you wrote before declaring done.`;
 const RULES_PHASE_2 = `${ENGINE_RULES}
 Review STORYBOARD.md against the compiled timelines before declaring done.`;
 
+/**
+ * Spec 059 FR-003: the one new rule, after the five engine rules and not numbered among them.
+ * FR-052: material only the user has is asked with a fallback; FR-053: every round item is
+ * put to the user; FR-056 (a), (b): dependents of a changed answer are asked again, and no file
+ * path is recorded that the user did not give.
+ */
+const USER_RULE = `Decisions are the user's, facts are yours: look up what \`eligian_project\` or the files
+answer (ids, classes, assets, languages, versions); ask the user only decisions, each with a
+recommendation yes accepts. User-only material (URL, logo, copy) gets a fallback: "or I'll
+use a placeholder. Placeholder?". Put every round item to the user, never fill one in
+yourself; delegated: true only after "you decide". Changed answer: ask its dependents again.
+Record only file paths the user gave.`;
+
+const RULES_PHASE_4 = `${ENGINE_RULES}
+${USER_RULE}
+Review STORYBOARD.md against the compiled timelines before declaring done.`;
+
 /** The Phase 1 server instructions (FR-018: ≤ 4,096 chars, tools and ids backticked). */
 export const INSTRUCTIONS_PHASE_1: string = `${PREAMBLE}\n\n${WORKFLOW_PHASE_1}\n\n${RULES_PHASE_1}\n`;
 
@@ -78,18 +133,23 @@ const INSTRUCTIONS_PHASE_2 = `${PREAMBLE}\n\n${WORKFLOW_PHASE_2}\n\n${RULES_PHAS
 /** The Phase 3 server instructions (FR-050): §3.5's final text with `explain:true`. */
 const INSTRUCTIONS_PHASE_3 = `${PREAMBLE}\n\n${WORKFLOW_PHASE_3}\n\n${RULES_PHASE_2}\n`;
 
+/** The spec 059 Phase 3 server instructions (FR-001 to FR-005): the brief first. */
+const INSTRUCTIONS_PHASE_4 = `${PREAMBLE}\n\n${WORKFLOW_PHASE_4}\n\n${RULES_PHASE_4}\n`;
+
 /** The instructions per phase; `server.ts` reads `INSTRUCTIONS[MCP_PHASE]`. */
-export const INSTRUCTIONS: Readonly<Record<1 | 2 | 3, string>> = {
+export const INSTRUCTIONS: Readonly<Record<1 | 2 | 3 | 4, string>> = {
   1: INSTRUCTIONS_PHASE_1,
   2: INSTRUCTIONS_PHASE_2,
   3: INSTRUCTIONS_PHASE_3,
+  4: INSTRUCTIONS_PHASE_4,
 };
 
 /** The workflow and rules of each phase, for the AGENTS.md block of `MCP_PHASE`. */
-const BLOCK_PARTS: Readonly<Record<1 | 2 | 3, { workflow: string; rules: string }>> = {
+const BLOCK_PARTS: Readonly<Record<1 | 2 | 3 | 4, { workflow: string; rules: string }>> = {
   1: { workflow: WORKFLOW_PHASE_1, rules: RULES_PHASE_1 },
   2: { workflow: WORKFLOW_PHASE_2, rules: RULES_PHASE_2 },
   3: { workflow: WORKFLOW_PHASE_3, rules: RULES_PHASE_2 },
+  4: { workflow: WORKFLOW_PHASE_4, rules: RULES_PHASE_4 },
 };
 
 /** The generated directory of each kind whose ids are `<kind>/<name>`. */

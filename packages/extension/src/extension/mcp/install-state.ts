@@ -5,7 +5,14 @@
  */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import {
+  findPackageManager,
+  type PackageManager,
+  readPackageManifest,
+} from '@eligian/shared-utils';
 import { intersects, validRange } from 'semver';
+
+export type { PackageManager };
 
 export const MIN_MAJOR = 1;
 export const MIN_MINOR = 1;
@@ -141,40 +148,6 @@ export async function vscodeMcpJsonState(
   return isRecord(parsed) && hasEligianServer(parsed.servers) ? 'configured' : 'none';
 }
 
-export type PackageManager = 'pnpm' | 'yarn' | 'bun' | 'npm';
-
-const LOCKFILES: readonly (readonly [string, PackageManager])[] = [
-  ['pnpm-lock.yaml', 'pnpm'],
-  ['yarn.lock', 'yarn'],
-  ['bun.lockb', 'bun'],
-  ['bun.lock', 'bun'],
-  ['package-lock.json', 'npm'],
-];
-
-const PACKAGE_MANAGER_FIELD = /^(pnpm|yarn|bun|npm)@/;
-
-const readManifest = async (dir: string): Promise<Record<string, unknown> | undefined> => {
-  const text = await readText(path.join(dir, 'package.json'));
-  const manifest = text === undefined ? undefined : parseJson(text);
-  return isRecord(manifest) ? manifest : undefined;
-};
-
-/** FR-035: walk up from folderPath; per directory a lockfile wins over `packageManager`. */
-export async function findPackageManager(folderPath: string): Promise<PackageManager> {
-  let dir = path.resolve(folderPath);
-  for (;;) {
-    for (const [lockfile, manager] of LOCKFILES) {
-      if (await isFile(path.join(dir, lockfile))) return manager;
-    }
-    const field = (await readManifest(dir))?.packageManager;
-    const match = typeof field === 'string' ? PACKAGE_MANAGER_FIELD.exec(field) : null;
-    if (match) return match[1] as PackageManager;
-    const parent = path.dirname(dir);
-    if (parent === dir) return 'npm';
-    dir = parent;
-  }
-}
-
 /** FR-036: a range in the folder's own package.json that admits ≥ 1.1.0 (P10). */
 export function admitsMinimum(range: unknown): boolean {
   if (typeof range !== 'string') return false;
@@ -205,7 +178,7 @@ const declaredRange = (manifest: Record<string, unknown> | undefined, field: str
 /** FR-035 + FR-036: the one line the Install terminal sends. */
 export async function installCommand(folderPath: string): Promise<string> {
   const manager = await findPackageManager(folderPath);
-  const manifest = await readManifest(folderPath);
+  const manifest = await readPackageManifest(folderPath);
   const admits =
     admitsMinimum(declaredRange(manifest, 'devDependencies')) ||
     admitsMinimum(declaredRange(manifest, 'dependencies'));

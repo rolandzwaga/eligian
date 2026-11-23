@@ -13,7 +13,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Effect, Option } from 'effect';
-import { expandPatterns } from '../check/check-command.js';
+import { expandPatterns } from '../check/files.js';
 import { ToolNotFound } from './errors.js';
 
 /** The `effect/ai` module; files under `src/mcp/` take it as a parameter (lazy import, FR-003). */

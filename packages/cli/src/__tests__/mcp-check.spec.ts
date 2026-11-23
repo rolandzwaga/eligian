@@ -18,6 +18,7 @@ import { getCompilerVersion, type QuickFix } from '@eligian/language';
 import { Effect } from 'effect';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { generateKnowledge } from '../../scripts/generate-knowledge.js';
+import { makeRecordStore } from '../mcp/brief/known-programs.js';
 import { CompilerLockLive } from '../mcp/compiler-lock.js';
 import type { McpDiagnostic } from '../mcp/diagnostics.js';
 import type { EffectAi } from '../mcp/paths.js';
@@ -49,10 +50,13 @@ const expectFailure = (result: ToolCallResult, kind: string) => {
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CASES = path.join(HERE, '__fixtures__', 'mcp', 'check');
 const CURRICULUM = path.join(CASES, 'curriculum');
-/** The case directories, each holding a `main.eligian` */
+/**
+ * The case directories, each holding a `main.eligian`; not `.eligian/`, the program record a
+ * server started on this dir writes (spec 059 FR-058)
+ */
 const CASE_NAMES = fs
   .readdirSync(CASES, { withFileTypes: true })
-  .filter(entry => entry.isDirectory() && entry.name !== 'curriculum')
+  .filter(entry => entry.isDirectory() && entry.name !== 'curriculum' && entry.name !== '.eligian')
   .map(entry => entry.name)
   .sort();
 
@@ -91,11 +95,13 @@ const namesInMessage = (message: string): string[] =>
 describe('eligian_check', () => {
   let ai: EffectAi;
   let docsRoot: string;
+  let stateDir: string;
   const versions = getCompilerVersion();
 
   beforeAll(async () => {
     ai = await import('effect/ai');
     docsRoot = tempDir('eligian-check-docs-');
+    stateDir = tempDir('eligian-check-state-');
     await generateKnowledge({ outDir: docsRoot, curriculumDir: CURRICULUM });
   }, 120_000);
 
@@ -105,6 +111,8 @@ describe('eligian_check', () => {
     docsRoot,
     versions,
     requestId: '1',
+    // Spec 059 FR-058 move (1): a case's programs exist before the first call scans its dir.
+    gate: { record: makeRecordStore(), stateDir, noteBrief: () => {} },
   });
 
   const check = (cwd: string, params: Params = { paths: ['main.eligian'] }) =>

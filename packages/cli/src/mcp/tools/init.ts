@@ -10,10 +10,14 @@
  * `effect/ai`'s `Tool` is `@stability unstable` (roadmap §2, decision 1: `effect` is pinned exactly).
  */
 // @effect-diagnostics unstableApiUsage:off
+import path from 'node:path';
 import { STARTER_ENTRY, type StarterName, starterFiles } from '@eligian/language';
 import { Effect, Schema } from 'effect';
 import type { AgentClient } from '../../agents.js';
+import { toGlobPath } from '../../check/files.js';
 import { runInit, titleFromDirectory } from '../../init.js';
+import { type ApprovedSet, checkPrograms, type GateContext } from '../brief/gate.js';
+import { type RecordEntry, scanProgram } from '../brief/known-programs.js';
 import { type ToolError, ToolFailure, ToolIoError, toToolError } from '../errors.js';
 import { type EffectAi, projectRoot, resolveInputPath } from '../paths.js';
 
@@ -65,6 +69,8 @@ export interface ToolContext {
   readonly docsRoot: URL | string;
   readonly versions: { readonly compiler: string; readonly eligius: string };
   readonly requestId: string;
+  /** Spec 059 Phase 2 (FR-013, FR-014, FR-061): the brief gate's record, key and telemetry note. */
+  readonly gate: GateContext;
 }
 
 export const summarizeArgs = (params: InitParameters): Readonly<Record<string, unknown>> => ({
@@ -99,6 +105,31 @@ const nextSteps = (target: string): string[] => [
   `Look at it: npx eligian dev ${STARTER_ENTRY} (npm run check / npm run build for the CLI).`,
 ];
 
+/** The names of `a`, then those of `b` not in `a`, each once. */
+const unionOf = (a: readonly string[], b: readonly string[]): string[] => [
+  ...new Set([...a, ...b]),
+];
+
+/**
+ * FR-061: the record entry of the program `eligian_init` wrote under an approved brief: the
+ * approved set (S2 names, L1 codes, H1 not `none`) plus the starter's own names, `via: brief`.
+ */
+const writtenEntry = (
+  root: string,
+  program: string,
+  approved: ApprovedSet,
+  text: string
+): RecordEntry => {
+  const scan = scanProgram(text);
+  return {
+    path: toGlobPath(path.relative(root, program)),
+    timelines: unionOf(approved.timelines, scan.timelines),
+    languages: unionOf(approved.languages, scan.languages),
+    extensions: approved.extensions || scan.extensions,
+    via: 'brief',
+  };
+};
+
 export const handle = (
   params: InitParameters,
   context: ToolContext
@@ -106,8 +137,13 @@ export const handle = (
   Effect.gen(function* () {
     const root = yield* projectRoot(context.ai, context.cwd);
     const target = yield* resolveInputPath(root, params.directory);
+    // FR-013, FR-014: the program the starter would write is gated before any file is written;
+    // it is about to be replaced, so no trigger check (P16).
+    const program = path.join(target, STARTER_ENTRY);
+    const [gate] = yield* checkPrograms(root, [program], context.gate, { init: true });
     const title = params.title?.trim() || titleFromDirectory(target);
-    const starter = Object.keys(starterFiles(params.template, { title }));
+    const files = starterFiles(params.template, { title });
+    const starter = Object.keys(files);
 
     const outcome = yield* Effect.tryPromise({
       try: () =>
@@ -127,6 +163,14 @@ export const handle = (
         message: `${refusal}\nPass force: true to overwrite them.`,
         path: target,
       });
+    }
+
+    // FR-061: under an approved brief the written program enters the record (P16: a forced
+    // re-init of work no approved brief governs leaves its entry as it is).
+    const approved = gate?.input.brief;
+    if (approved?.state === 'approved') {
+      const entry = writtenEntry(root.root, program, approved.approvedSet, files[STARTER_ENTRY]);
+      yield* context.gate.record.update(root.root, [entry]);
     }
 
     return {

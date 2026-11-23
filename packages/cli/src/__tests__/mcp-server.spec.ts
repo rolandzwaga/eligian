@@ -1,7 +1,7 @@
 /**
  * Spec 058 Phase 1 (FR-002, FR-003, FR-005, FR-016–FR-018; SC-003, SC-004, SC-029; plan C10)
  * and Phase 2 (FR-001, FR-002, FR-004; SC-001, SC-002; plan D7): the composed MCP server,
- * in-process through `mcp-test-client.ts`: the eight tools, their annotations, the description
+ * in-process through `mcp-test-client.ts`: the nine tools, their annotations, the description
  * and instruction budgets, the protocol list, the FR-005 payload shape of one valid call per
  * tool and the declared failure of the three Phase 2 tools.
  *
@@ -22,6 +22,7 @@ import { generateKnowledge } from '../../scripts/generate-knowledge.js';
 import { INSTRUCTIONS, MCP_PHASE } from '../mcp/instructions.js';
 import type { IndexEntry } from '../mcp/knowledge/types.js';
 import { serverProtocols } from '../mcp/server.js';
+import * as brief from '../mcp/tools/brief.js';
 import * as check from '../mcp/tools/check.js';
 import * as compile from '../mcp/tools/compile.js';
 import * as docs from '../mcp/tools/docs.js';
@@ -30,6 +31,7 @@ import * as init from '../mcp/tools/init.js';
 import * as operations from '../mcp/tools/operations.js';
 import * as project from '../mcp/tools/project.js';
 import * as smoke from '../mcp/tools/smoke.js';
+import { approvedBrief } from './brief-helpers.js';
 import { type InMemoryServer, startInMemoryServer } from './mcp-test-client.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -38,6 +40,7 @@ const PROGRAM = path.join(HERE, '__fixtures__', 'mcp', 'fmt', 'formatted.eligian
 const STUB = path.join(HERE, '__fixtures__', 'mcp', 'smoke-tool', 'stub-cli.mjs');
 
 const TOOL_NAMES: readonly string[] = [
+  brief.NAME,
   docs.NAME,
   operations.NAME,
   check.NAME,
@@ -47,7 +50,7 @@ const TOOL_NAMES: readonly string[] = [
   project.NAME,
   smoke.NAME,
 ];
-const UPFRONT: readonly string[] = [docs.NAME, operations.NAME, check.NAME];
+const UPFRONT: readonly string[] = [brief.NAME, docs.NAME, operations.NAME, check.NAME];
 /** Phase 2: deferred, read-only, with `anthropic/maxResultSizeChars` (FR-002) */
 const READONLY: readonly string[] = [compile.NAME, project.NAME, smoke.NAME];
 const DEFERRED = {
@@ -115,10 +118,11 @@ describe('the MCP server', () => {
   });
 
   describe('tool surface', () => {
-    it('lists exactly eight tools', async () => {
+    it('lists exactly nine tools', async () => {
       const tools = await listTools();
 
       expect(tools.map(tool => tool.name).sort()).toEqual([
+        'eligian_brief',
         'eligian_check',
         'eligian_compile',
         'eligian_docs',
@@ -142,15 +146,22 @@ describe('the MCP server', () => {
       ).toMatchFileSnapshot('__snapshots__/tools-list-phase3.json.snap');
     });
 
-    it('INSTRUCTIONS[MCP_PHASE] matches the Phase 3 snapshot', async () => {
-      await expect(INSTRUCTIONS[MCP_PHASE]).toMatchFileSnapshot(
+    it('INSTRUCTIONS[3] matches the Phase 3 snapshot', async () => {
+      await expect(INSTRUCTIONS[3]).toMatchFileSnapshot(
         '__snapshots__/instructions-phase3.txt.snap'
+      );
+    });
+
+    it('INSTRUCTIONS[MCP_PHASE] matches the Phase 4 snapshot', async () => {
+      expect(MCP_PHASE).toBe(4);
+      await expect(INSTRUCTIONS[MCP_PHASE]).toMatchFileSnapshot(
+        '__snapshots__/instructions-phase4.txt.snap'
       );
     });
   });
 
   describe('annotations', () => {
-    it('three upfront, three readonly with maxResultSizeChars', async () => {
+    it('four upfront, three readonly with maxResultSizeChars', async () => {
       const tools = await listTools();
 
       const alwaysLoad = tools
@@ -160,7 +171,11 @@ describe('the MCP server', () => {
       expect(alwaysLoad).toEqual([...UPFRONT].sort());
       expect(tools.filter(tool => READONLY.includes(tool.name))).toHaveLength(3);
       for (const tool of tools) {
-        if (UPFRONT.includes(tool.name)) {
+        if (tool.name === brief.NAME) {
+          expect(tool.annotations?.readOnlyHint, tool.name).not.toBe(true);
+          expect(tool.annotations?.destructiveHint, tool.name).toBe(false);
+          expect(tool.annotations?.idempotentHint, tool.name).toBe(true);
+        } else if (UPFRONT.includes(tool.name)) {
           expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
         } else if (READONLY.includes(tool.name)) {
           expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
@@ -188,10 +203,18 @@ describe('the MCP server', () => {
       const tools = await listTools();
       const upfront = tools.filter(tool => UPFRONT.includes(tool.name));
 
-      expect(upfront).toHaveLength(3);
+      expect(upfront).toHaveLength(4);
       for (const tool of upfront) {
         expect(tool.description?.length, tool.name).toBeLessThanOrEqual(1000);
       }
+    });
+
+    it('the eligian_brief description says only the tool writes BRIEF.md', async () => {
+      const tools = await listTools();
+      const description = tools.find(tool => tool.name === brief.NAME)?.description ?? '';
+
+      expect(description).toContain('BRIEF.md');
+      expect(description).toContain('never edit');
     });
 
     it('deferred descriptions ≤ 16384 and KEYWORDS in the first 200', async () => {
@@ -258,8 +281,13 @@ describe('the MCP server', () => {
   });
 
   describe('payload shape', () => {
-    const expectShape = async (tool: string, args: unknown, resolved: () => string) => {
-      const server = await start();
+    const expectShape = async (
+      tool: string,
+      args: unknown,
+      resolved: () => string,
+      on?: InMemoryServer
+    ) => {
+      const server = on ?? (await start());
       const { payload, isError, raw } = await server.callTool(tool, args);
       const text = (raw as { content: { type: string; text: string }[] }).content[0].text;
 
@@ -290,9 +318,28 @@ describe('the MCP server', () => {
     });
 
     it('eligian_init', async () => {
-      await expectShape(init.NAME, { directory: 'project', template: 'blank' }, () =>
-        path.join(cwd, 'project')
+      // Spec 059 FR-058 move (2): the target's brief approved through the tool, a test key. The
+      // server is rooted at the target: the persona's entry file (R3 `main.eligian`) is relative
+      // to the project root and must sit next to the brief.
+      const stateDir = fs.realpathSync(
+        fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-mcp-server-state-'))
       );
+      try {
+        const target = path.join(cwd, 'project');
+        fs.mkdirSync(target);
+        const server = await startInMemoryServer({
+          cwd: target,
+          docsRoot,
+          smoke: { cliPath: STUB },
+          brief: { stateDir },
+        });
+        servers.push(server);
+        await approvedBrief(server, target, { stateDir });
+
+        await expectShape(init.NAME, { directory: '.', template: 'blank' }, () => target, server);
+      } finally {
+        fs.rmSync(stateDir, { recursive: true, force: true });
+      }
     });
   });
 

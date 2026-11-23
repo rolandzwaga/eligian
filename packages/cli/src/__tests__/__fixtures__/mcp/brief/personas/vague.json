@@ -1,0 +1,89 @@
+{
+  "idea": "Something about our new office, not sure yet.",
+  "answers": {
+    "P1": { "value": "People like the new office." },
+    "P2": { "value": "none" },
+    "P3": { "value": "Staff, I think." },
+    "P4": { "value": "casual" },
+    "P5": { "value": "viewer-paced" },
+    "C1": { "value": "self-paced" },
+    "C2": { "value": [{ "device": "desktop", "primary": "yes" }] },
+    "C3": { "value": ["mouse"] },
+    "C4": { "value": "on" },
+    "C5": { "value": "online" },
+    "S1": { "value": "slide-deck" },
+    "S2": {
+      "value": [
+        { "name": "overview", "purpose": "The office" },
+        { "name": "details", "purpose": "Some details" }
+      ]
+    },
+    "S3": { "values": [{ "value": "nowhere" }, { "value": "overview" }] },
+    "S4": {
+      "value": [
+        { "view": "overview", "target": "details", "trigger": "a Next button" },
+        { "view": "details", "target": "overview", "trigger": "a Back button" }
+      ]
+    },
+    "S5": {
+      "value": [{ "view": "overview", "end": "stay" }, { "view": "details", "end": "stay" }]
+    },
+    "S6": {
+      "value": [
+        { "view": "overview", "provider": "raf", "source": "-" },
+        { "view": "details", "provider": "raf", "source": "-" }
+      ]
+    },
+    "S8": { "value": "stay" },
+    "V1:overview": { "value": "There is a new office." },
+    "V2:overview": { "value": "Our new office" },
+    "V3:overview": { "value": [{ "element": "Next button", "kind": "button", "file": "-" }] },
+    "V4:overview": { "value": "The title appears." },
+    "V5:overview": { "value": { "duration": "none", "pacing": "none", "cues-from": "-" } },
+    "V6:overview": { "value": "The Next button goes to details on click." },
+    "V1:details": { "value": "Where things are." },
+    "V2:details": { "value": "Details\nMore to follow." },
+    "V3:details": { "value": [{ "element": "Back button", "kind": "button", "file": "-" }] },
+    "V4:details": { "value": "Not sure; something simple." },
+    "V5:details": { "value": { "duration": "none", "pacing": "none", "cues-from": "-" } },
+    "V6:details": { "value": "The Back button goes to overview on click." },
+    "I3": { "value": "none" },
+    "I4": { "value": "restart" },
+    "D1": { "value": "none" },
+    "D2": { "value": "Something light." },
+    "D3": { "value": [{ "font": "Arial", "source": "system", "file": "-", "licence": "-" }] },
+    "D4": { "value": { "choice": "fluid", "detail": "whatever works" } },
+    "D5": {
+      "value": [{ "view": "overview", "layout": "title" }, { "view": "details", "layout": "title" }]
+    },
+    "D6": { "value": "Not much." },
+    "D7": { "value": "keep" },
+    "L1": { "value": [{ "code": "en-GB", "default": "yes" }] },
+    "H1": { "value": "none" },
+    "X1": { "value": "none" },
+    "X2": { "value": false },
+    "X3": { "value": { "focus": "no", "announce": "no" } },
+    "R1": { "value": { "choice": "standalone", "detail": "the intranet" } },
+    "R2": { "value": "Whatever the office uses." },
+    "R3": { "value": "main.eligian" },
+    "R4": { "value": false },
+    "W1": { "value": "Most things." },
+    "W2": { "value": "end" },
+    "W3": { "value": "It looks fine." }
+  },
+  "script": [
+    {
+      "afterRound": 8,
+      "answers": [
+        {
+          "id": "S2",
+          "value": [
+            { "name": "overview", "purpose": "The office" },
+            { "name": "details", "purpose": "Where the rooms and desks are" }
+          ]
+        },
+        { "id": "C4", "value": "off" }
+      ]
+    }
+  ]
+}

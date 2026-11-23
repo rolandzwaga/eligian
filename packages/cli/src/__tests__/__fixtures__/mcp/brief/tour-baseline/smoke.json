@@ -1,0 +1,46 @@
+{
+  "payload": {
+    "header": "<HEADER>",
+    "ok": true,
+    "files": [
+      {
+        "file": "<TMP>/tour.eligian",
+        "timelines": [
+          {
+            "name": "B1",
+            "boundaries": 2
+          }
+        ]
+      }
+    ],
+    "steps": [],
+    "problems": []
+  },
+  "isError": false,
+  "raw": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"header\":\"<HEADER>\",\"ok\":true,\"files\":[{\"file\":\"<TMP>/tour.eligian\",\"timelines\":[{\"name\":\"B1\",\"boundaries\":2}]}],\"steps\":[],\"problems\":[]}"
+      }
+    ],
+    "structuredContent": {
+      "header": "<HEADER>",
+      "ok": true,
+      "files": [
+        {
+          "file": "<TMP>/tour.eligian",
+          "timelines": [
+            {
+              "name": "B1",
+              "boundaries": 2
+            }
+          ]
+        }
+      ],
+      "steps": [],
+      "problems": []
+    },
+    "isError": false
+  }
+}

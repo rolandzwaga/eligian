@@ -1,0 +1,5 @@
+{
+  "name": "eligian-brief-spike",
+  "version": "0.0.0",
+  "description": "Spec 059 spike: a PreToolUse hook shipped by a plugin (not the real gate)"
+}

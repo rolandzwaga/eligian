@@ -183,6 +183,72 @@ describe('eligian init', () => {
     });
   });
 
+  /** Spec 059 Phase 2 (FR-060, P9, SC-022): the CLI action passes `firstRecord: true`. */
+  describe('eligian init writes the first record', () => {
+    const recordOf = (dir: string) => path.join(cwd, dir, '.eligian', 'programs.json');
+    const init = (dir: string, template = 'blank') =>
+      runInit(dir, { template, force: false, cwd, docsRoot: DOCS_ROOT, firstRecord: true });
+
+    it.each(['blank', 'chapters', 'video', 'library'])(
+      'template %s into an empty dir: { version: 1, programs: [] }, .gitignore *, no main.eligian entry',
+      async template => {
+        expect((await init('talk', template)).exitCode).toBe(0);
+        expect(JSON.parse(read('talk/.eligian/programs.json'))).toEqual({
+          version: 1,
+          programs: [],
+        });
+        expect(read('talk/.eligian/.gitignore')).toBe('*\n');
+        expect(read('talk/.eligian/programs.json')).not.toContain('main.eligian');
+      }
+    );
+
+    it('a dir holding a.eligian and lib.eligian → exactly a.eligian via first-run', async () => {
+      fs.mkdirSync(path.join(cwd, 'talk'));
+      fs.writeFileSync(path.join(cwd, 'talk', 'a.eligian'), 'timeline "A" in "#s" using raf {}\n');
+      fs.writeFileSync(path.join(cwd, 'talk', 'lib.eligian'), 'library lib\naction f() [\n]\n');
+      expect((await init('talk')).exitCode).toBe(0);
+      expect(JSON.parse(read('talk/.eligian/programs.json'))).toEqual({
+        version: 1,
+        programs: [
+          {
+            path: 'a.eligian',
+            timelines: ['A'],
+            languages: [],
+            extensions: false,
+            via: 'first-run',
+          },
+        ],
+      });
+    });
+
+    it('an existing programs.json is byte-identical afterwards', async () => {
+      const text = '{"version":1,"programs":[]}';
+      fs.mkdirSync(path.join(cwd, 'talk', '.eligian'), { recursive: true });
+      fs.writeFileSync(recordOf('talk'), text);
+      fs.writeFileSync(path.join(cwd, 'talk', 'a.eligian'), 'timeline "A" in "#s" using raf {}\n');
+      expect((await init('talk')).exitCode).toBe(0);
+      expect(fs.readFileSync(recordOf('talk'), 'utf-8')).toBe(text);
+    });
+
+    it('without firstRecord (eligian_init) no .eligian/ is created', async () => {
+      const outcome = await runInit('talk', {
+        template: 'blank',
+        force: false,
+        cwd,
+        docsRoot: DOCS_ROOT,
+      });
+      expect(outcome.exitCode).toBe(0);
+      expect(fs.existsSync(path.join(cwd, 'talk', '.eligian'))).toBe(false);
+    });
+
+    it('a refused init (existing starter files) writes no record', async () => {
+      fs.mkdirSync(path.join(cwd, 'talk'));
+      fs.writeFileSync(path.join(cwd, 'talk', 'main.eligian'), 'keep me');
+      expect((await init('talk')).exitCode).toBe(1);
+      expect(fs.existsSync(path.join(cwd, 'talk', '.eligian'))).toBe(false);
+    });
+  });
+
   it('derives a title from the directory name', () => {
     expect(titleFromDirectory('my-first_talk')).toBe('My First Talk');
   });

@@ -10,12 +10,26 @@
  */
 
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
-import { dirname, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { approvedBrief, tempProject } from './brief-helpers.js';
+import { BRIEFED_PROGRAM } from './hook-cases.js';
+import { startInMemoryServer } from './mcp-test-client.js';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const pkg = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf-8')) as {
@@ -60,6 +74,14 @@ function packedFiles(): string[] {
 interface InitializeAnswer {
   id?: unknown;
   result?: { protocolVersion: string; serverInfo: { name: string; version: string } };
+}
+
+/** A JSON-RPC frame of the spawned `eligian mcp` (a response has an `id` and no `method`) */
+interface JsonRpcFrame {
+  id?: unknown;
+  method?: string;
+  result?: unknown;
+  error?: { code: number; message: string };
 }
 
 describe('the eligian npm package', () => {
@@ -196,6 +218,98 @@ describe('the eligian npm package', () => {
     }
   );
 
+  // Spec 059 SC-015 (FR-003, P18): the first-run scan of 200 programs runs in the background, so
+  // `initialize` does not wait for it; the first gated call waits for it and is not refused
+  test.skipIf(!built || !hasMcp)(
+    'mcp answers initialize in under 3 s with 200 programs; the first check on an existing program runs',
+    { timeout: 60_000 },
+    async () => {
+      const root = mkdtempSync(resolve(tmpdir(), 'eligian-cold-start-'));
+      for (let index = 0; index < 200; index++) {
+        const name = `p${String(index).padStart(3, '0')}`;
+        writeFileSync(
+          resolve(root, `${name}.eligian`),
+          `timeline "${name}" in "#s" using raf {}\n`,
+          'utf-8'
+        );
+      }
+      const start = performance.now();
+      const child = spawn(process.execPath, [process.env.ELIGIAN_BIN ?? bin, 'mcp'], {
+        cwd: root,
+      });
+      let stderr = '';
+      child.stderr.setEncoding('utf-8');
+      child.stderr.on('data', (chunk: string) => {
+        stderr += chunk;
+      });
+      const pending = new Map<number, (frame: JsonRpcFrame) => void>();
+      const exited = new Promise<never>((_, reject) => {
+        child.on('error', reject);
+        child.on('exit', code =>
+          reject(new Error(`mcp exited (${code}) before answering; stderr:\n${stderr}`))
+        );
+      });
+      exited.catch(() => undefined); // the kill at the end rejects it; nothing waits then
+      let buffered = '';
+      child.stdout.setEncoding('utf-8');
+      child.stdout.on('data', (chunk: string) => {
+        buffered += chunk;
+        const lines = buffered.split('\n');
+        buffered = lines.pop() ?? '';
+        for (const line of lines) {
+          try {
+            const frame = JSON.parse(line) as JsonRpcFrame;
+            if (typeof frame.id === 'number' && frame.method === undefined) {
+              pending.get(frame.id)?.(frame);
+            }
+          } catch {
+            // not a protocol frame
+          }
+        }
+      });
+      const send = (message: Record<string, unknown>): void => {
+        child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...message })}\n`);
+      };
+      const request = (id: number, method: string, params: unknown): Promise<JsonRpcFrame> => {
+        const answer = new Promise<JsonRpcFrame>(resolveAnswer => pending.set(id, resolveAnswer));
+        send({ id, method, params });
+        return Promise.race([answer, exited]);
+      };
+      try {
+        const init = await request(1, 'initialize', {
+          protocolVersion: '2025-06-18',
+          capabilities: {},
+          clientInfo: { name: 'package-bin.spec', version: '0' },
+        });
+        const elapsed = performance.now() - start;
+        console.info(`mcp initialize with 200 programs answered in ${Math.round(elapsed)} ms`);
+        expect(init.error, stderr).toBeUndefined();
+        expect(init.result).toBeDefined();
+        expect(elapsed).toBeLessThan(3000);
+
+        send({ method: 'notifications/initialized' });
+        const check = await request(2, 'tools/call', {
+          name: 'eligian_check',
+          arguments: { paths: ['p000.eligian'] },
+        });
+        expect(check.error, stderr).toBeUndefined();
+        const result = check.result as { content: { text: string }[]; isError?: boolean };
+        const payload = JSON.parse(result.content[0].text) as {
+          error?: { kind?: string; gate?: { code?: string } };
+        };
+        expect(payload.error?.gate?.code, result.content[0].text).toBeUndefined();
+        expect(result.isError === true, result.content[0].text).toBe(false);
+      } finally {
+        child.kill();
+        await new Promise<void>(resolveExit => {
+          if (child.exitCode !== null || child.signalCode !== null) resolveExit();
+          else child.once('exit', () => resolveExit());
+        });
+        rmSync(root, { recursive: true, force: true });
+      }
+    }
+  );
+
   // jsdom, esbuild, effect/ai and the eligius engine load only on the paths that use them
   // (SC-018; `eligius/lint` is allowed)
   test.skipIf(!built)('no static import of jsdom, esbuild, effect/ai or the eligius engine', () => {
@@ -310,6 +424,168 @@ describe('the eligian npm package', () => {
       expect(typeof evals.promotionEvidence).toBe('function');
       expect(typeof evals.renderPromotionEvidence).toBe('function');
       expect(evals.REVIEW_CODES).toHaveLength(9);
+    }
+  );
+});
+
+/** One warm-up run, then five timed runs (ms) and their median, as the --version timing above. */
+function medianOf5(run: () => void): { times: number[]; median: number } {
+  run(); // warm-up, not counted
+  const times: number[] = [];
+  for (let index = 0; index < 5; index++) {
+    const start = performance.now();
+    run();
+    times.push(Math.round(performance.now() - start));
+  }
+  return { times, median: [...times].sort((a, b) => a - b)[2] };
+}
+
+// Spec 059 Phase 3 SC-008 (FR-013, FR-047): the hook's latency. A guarded write pays the start of
+// the CLI bundle (`brief gate`, under 3 s like `--version` and `initialize`); any other write pays
+// only the start of `node` for the plugin's prefilter (under 1 s), which starts no `npx`.
+describe.skipIf(!built)('the brief hook (spec 059 SC-008)', () => {
+  const repoRoot = resolve(packageRoot, '..', '..');
+  const prefilter = resolve(repoRoot, 'plugins', 'claude', 'eligian', 'hooks', 'prefilter.cjs');
+  const docsRoot = resolve(packageRoot, 'src', '__tests__', '__fixtures__', 'mcp', 'docs-mini');
+  const temps: string[] = [];
+  let dir = '';
+  let stateDir = '';
+
+  beforeAll(async () => {
+    dir = tempProject();
+    stateDir = mkdtempSync(join(tmpdir(), 'eligian-hook-state-'));
+    temps.push(dir, stateDir);
+    const server = await startInMemoryServer({ cwd: dir, docsRoot, brief: { stateDir } });
+    try {
+      await approvedBrief(server, dir, { stateDir });
+    } finally {
+      await server.close();
+    }
+  }, 120_000);
+
+  afterAll(() => {
+    for (const temp of temps) rmSync(temp, { recursive: true, force: true });
+  });
+
+  const gate = (input: unknown, state: string) =>
+    spawnSync(process.execPath, [bin, 'brief', 'gate'], {
+      input: JSON.stringify(input),
+      env: { ...process.env, ELIGIAN_STATE_DIR: state },
+      encoding: 'utf-8',
+    });
+
+  test.each([
+    {
+      name: 'a rule-2 Write of a new main.eligian under the approved brief',
+      input: () => ({
+        tool_name: 'Write',
+        tool_input: { file_path: join(dir, 'main.eligian'), content: BRIEFED_PROGRAM },
+        cwd: dir,
+      }),
+      rule2: true,
+    },
+    {
+      name: 'a Read',
+      input: () => ({
+        tool_name: 'Read',
+        tool_input: { file_path: join(dir, 'BRIEF.md') },
+        cwd: dir,
+      }),
+      rule2: false,
+    },
+  ])(
+    'brief gate decides in under 3 s (median of 5): $name',
+    { timeout: 60_000 },
+    ({ name, input, rule2 }) => {
+      const hookInput = input();
+      let status: number | null = null;
+      let stdout = '';
+      let stderr = '';
+      const { times, median } = medianOf5(() => {
+        ({ status, stdout, stderr } = gate(hookInput, stateDir));
+      });
+      console.info(`brief gate, ${name} (ms): ${times.join(' ')} median ${median}`);
+      expect(status, stderr).toBe(0);
+      expect(stdout).toBe('');
+      expect(stderr).toBe('');
+      expect(existsSync(join(dir, 'main.eligian'))).toBe(false);
+      if (rule2) {
+        // The approved brief is what lets the write through: read with another key, it blocks
+        const otherKey = mkdtempSync(join(tmpdir(), 'eligian-hook-other-'));
+        temps.push(otherKey);
+        expect(gate(hookInput, otherKey).status).toBe(2);
+      }
+      expect(median).toBeLessThan(3000);
+    }
+  );
+
+  /** A temp `bin/` with a stub `npx` (`npx.cmd` on Windows) that writes `marker` when started. */
+  const stubNpx = (): { bin: string; marker: string } => {
+    const root = mkdtempSync(join(tmpdir(), 'eligian-prefilter-'));
+    temps.push(root);
+    const stubBin = join(root, 'bin');
+    const marker = join(root, 'marker.txt');
+    mkdirSync(stubBin);
+    writeFileSync(
+      join(stubBin, 'stub.cjs'),
+      `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'started');\n`
+    );
+    if (process.platform === 'win32') {
+      writeFileSync(join(stubBin, 'npx.cmd'), '@node "%~dp0stub.cjs" %*\r\n');
+    } else {
+      // Absolute paths, no `dirname`: the test's PATH holds only the stub and node directories.
+      const npx = join(stubBin, 'npx');
+      const quoted = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+      writeFileSync(
+        npx,
+        `#!/bin/sh\nexec ${quoted(process.execPath)} ${quoted(join(stubBin, 'stub.cjs'))} "$@"\n`
+      );
+      chmodSync(npx, 0o755);
+    }
+    return { bin: stubBin, marker };
+  };
+
+  test.each([
+    { name: 'a Read', tool: 'Read', file: 'BRIEF.md' },
+    { name: 'a Write of notes.txt', tool: 'Write', file: 'notes.txt' },
+  ])(
+    'the prefilter passes a non-guarded write in under 1 s (median of 5): $name',
+    {
+      timeout: 60_000,
+    },
+    ({ name, tool, file }) => {
+      const stub = stubNpx();
+      // The stub first on PATH (kept under the key the OS spells it with), then the node directory
+      const pathKey = Object.keys(process.env).find(key => key.toUpperCase() === 'PATH') ?? 'PATH';
+      const env: NodeJS.ProcessEnv = {};
+      for (const [key, value] of Object.entries(process.env)) {
+        if (key.toUpperCase() !== 'PATH') env[key] = value;
+      }
+      env[pathKey] = [stub.bin, dirname(process.execPath)].join(delimiter);
+      const stdin = JSON.stringify({
+        tool_name: tool,
+        tool_input:
+          tool === 'Write'
+            ? { file_path: join(dir, file), content: 'x\n' }
+            : { file_path: join(dir, file) },
+        cwd: dir,
+      });
+      let status: number | null = null;
+      let stdout = '';
+      let stderr = '';
+      const { times, median } = medianOf5(() => {
+        ({ status, stdout, stderr } = spawnSync(process.execPath, [prefilter], {
+          input: stdin,
+          env,
+          encoding: 'utf-8',
+        }));
+      });
+      console.info(`prefilter, ${name} (ms): ${times.join(' ')} median ${median}`);
+      expect(status, stderr).toBe(0);
+      expect(stdout).toBe('');
+      expect(stderr).toBe('');
+      expect(existsSync(stub.marker)).toBe(false);
+      expect(median).toBeLessThan(1000);
     }
   );
 });

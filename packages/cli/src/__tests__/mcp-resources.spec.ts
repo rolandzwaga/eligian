@@ -102,7 +102,7 @@ const readResource = (server: InMemoryServer, uri: string): Promise<JsonRpcRespo
 const expectToolsAnswer = async (server: InMemoryServer): Promise<void> => {
   const tools = await server.request('tools/list', {});
   expect(tools.error).toBeUndefined();
-  expect((tools.result as { tools: unknown[] }).tools).toHaveLength(8);
+  expect((tools.result as { tools: unknown[] }).tools).toHaveLength(9);
 };
 
 /** A docs root holding `index.json` with ENTRY only, plus `overlays.json` `{}` when asked. */
@@ -163,6 +163,15 @@ describe('docs resources', () => {
         });
       }
       expect(byUri.has('eligian://docs/operation/addClass')).toBe(true);
+    });
+  });
+
+  // Spec 059 Phase 3 SC-006: the interview chunk is a resource like every other chunk
+  it('eligian://docs/interview is listed', async () => {
+    await withServer(docsRoot, async server => {
+      await initialize(server);
+      const resources = await listResources(server);
+      expect(resources.map(r => r.uri)).toContain('eligian://docs/interview');
     });
   });
 

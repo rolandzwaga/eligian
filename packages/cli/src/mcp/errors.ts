@@ -8,8 +8,9 @@
  * to the server's stderr logger) so a bug still answers in that shape; interruption passes.
  */
 import { Data, Effect, Schema } from 'effect';
+import { type GateRefusal, GateRefusalSchema } from './brief/wire.js';
 
-export type ToolErrorKind = 'not-found' | 'io' | 'timeout' | 'cancelled' | 'internal';
+export type ToolErrorKind = 'not-found' | 'io' | 'timeout' | 'cancelled' | 'internal' | 'gate';
 
 export class ToolNotFound extends Data.TaggedError('ToolNotFound')<{
   readonly message: string;
@@ -26,9 +27,16 @@ export class ToolInternal extends Data.TaggedError('ToolInternal')<{
   readonly path?: string;
 }> {}
 
-export type ToolError = ToolNotFound | ToolIoError | ToolInternal;
+/** Spec 059 Phase 2 (FR-016, FR-017): a gated tool refused its programs; `gate` is the payload. */
+export class ToolGateRefused extends Data.TaggedError('ToolGateRefused')<{
+  readonly message: string;
+  readonly path?: string;
+  readonly gate: GateRefusal;
+}> {}
 
-const TOOL_ERROR_KINDS = ['not-found', 'io', 'timeout', 'cancelled', 'internal'] as const;
+export type ToolError = ToolNotFound | ToolIoError | ToolInternal | ToolGateRefused;
+
+const TOOL_ERROR_KINDS = ['not-found', 'io', 'timeout', 'cancelled', 'internal', 'gate'] as const;
 
 /** The declared failure on the wire (a plain object, C2). */
 export const ToolFailure = Schema.Struct({
@@ -37,6 +45,7 @@ export const ToolFailure = Schema.Struct({
     kind: Schema.Literals(TOOL_ERROR_KINDS),
     message: Schema.String,
     path: Schema.optionalKey(Schema.String),
+    gate: Schema.optionalKey(GateRefusalSchema),
   }),
 });
 export type ToolFailure = typeof ToolFailure.Type;
@@ -45,6 +54,7 @@ const KIND_OF_TAG: Record<ToolError['_tag'], ToolErrorKind> = {
   ToolNotFound: 'not-found',
   ToolIoError: 'io',
   ToolInternal: 'internal',
+  ToolGateRefused: 'gate',
 };
 
 export const toToolFailure =
@@ -55,6 +65,7 @@ export const toToolFailure =
       kind: KIND_OF_TAG[error._tag],
       message: error.message,
       ...(error.path === undefined ? {} : { path: error.path }),
+      ...(error._tag === 'ToolGateRefused' ? { gate: error.gate } : {}),
     },
   });
 

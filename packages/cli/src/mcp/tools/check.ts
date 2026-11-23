@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import { Effect, Schema } from 'effect';
 import { checkPaths } from '../../check/check-command.js';
 import { summarize } from '../../check/reporters.js';
+import { checkPrograms, type GateContext } from '../brief/gate.js';
 import { CompilerLock } from '../compiler-lock.js';
 import { McpDiagnosticSchema, toMcpDiagnostics } from '../diagnostics.js';
 import { type ToolError, ToolFailure, toToolError } from '../errors.js';
@@ -30,6 +31,8 @@ export interface ToolContext {
   readonly docsRoot: URL | string;
   readonly versions: { readonly compiler: string; readonly eligius: string };
   readonly requestId: string;
+  /** Spec 059 Phase 2 (FR-010, FR-014): the brief gate's record, key and telemetry note. */
+  readonly gate: GateContext;
 }
 
 export const NAME = 'eligian_check' as const;
@@ -121,6 +124,8 @@ export const handle = (
     const options = optionsOf(params);
     const root = yield* projectRoot(context.ai, context.cwd);
     const files = yield* resolveInputPatterns(root, params.paths);
+    // FR-014: the gate first, before the knowledge, the lock and any document.
+    yield* checkPrograms(root, files, context.gate);
     const knowledge = yield* loadKnowledge(context.docsRoot);
     const lock = yield* CompilerLock;
     const results = yield* lock.run(

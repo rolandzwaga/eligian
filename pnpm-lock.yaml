@@ -243,6 +243,9 @@ importers:
       '@eligian/language':
         specifier: workspace:*
         version: link:../language
+      '@eligian/shared-utils':
+        specifier: workspace:*
+        version: link:../shared-utils
       '@modelcontextprotocol/inspector':
         specifier: 2.14.0
         version: 2.14.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.6.1)(tsx@4.23.15)

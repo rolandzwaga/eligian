@@ -58,3 +58,7 @@ packages/cli/*.tgz
 
 # Claude Code workflows are source (the *.js rule above is for build output)
 !/.claude/workflows/*.js
+
+# Eval runs (pnpm evals:mcp): local output, never committed
+evals/mcp/results/*
+!evals/mcp/results/.gitkeep

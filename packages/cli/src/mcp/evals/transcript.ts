@@ -23,6 +23,8 @@ export interface ToolEntry extends ToolCall {
   readonly resultText?: string;
   /** The characters of the result: the string's length, or the sum of the items' text lengths */
   readonly resultChars: number;
+  /** Spec 059 (P7): present only when the matching `tool_result` has `is_error: true` */
+  readonly isError?: true;
 }
 
 /** A line of `ELIGIAN_MCP_LOG` (`telemetry.ts` `TelemetryLine`), as read back. */
@@ -40,7 +42,7 @@ export interface RunMetrics {
   readonly checkToolCalls: number;
   /** Bash calls that run `eligian check` / `cli.js check` */
   readonly checkBashCalls: number;
-  /** `toolCalls(events).length`, the count the budget uses (FR-008) */
+  /** `toolCalls(events).length` less the `eligian_brief` calls (spec 059 FR-032), the count the budget uses (FR-008) */
   readonly toolCalls: number;
   /** FR-005: every tool result of the transcript, the arm-neutral tokens-from-tools */
   readonly transcriptToolChars: number;
@@ -106,11 +108,13 @@ function resultOf(content: unknown): { text: string; chars: number } {
  * a `user` event returned for its `tool_use_id`, wherever in the transcript it came.
  */
 export function toolEntries(events: readonly unknown[]): ToolEntry[] {
-  const results = new Map<string, unknown>();
+  const results = new Map<string, { content: unknown; isError: boolean }>();
   for (const event of events) {
     for (const item of contentItems(event, 'user')) {
       if (isRecord(item) && item.type === 'tool_result' && typeof item.tool_use_id === 'string') {
-        if (!results.has(item.tool_use_id)) results.set(item.tool_use_id, item.content);
+        if (!results.has(item.tool_use_id)) {
+          results.set(item.tool_use_id, { content: item.content, isError: item.is_error === true });
+        }
       }
     }
   }
@@ -120,17 +124,19 @@ export function toolEntries(events: readonly unknown[]): ToolEntry[] {
       if (!isRecord(item) || item.type !== 'tool_use' || typeof item.name !== 'string') continue;
       const id = typeof item.id === 'string' ? item.id : '';
       const input = isRecord(item.input) ? item.input : {};
-      if (!results.has(id)) {
+      const matched = results.get(id);
+      if (matched === undefined) {
         entries.push({ id, name: item.name, input, resultChars: 0 });
         continue;
       }
-      const result = resultOf(results.get(id));
+      const result = resultOf(matched.content);
       entries.push({
         id,
         name: item.name,
         input,
         resultText: result.text,
         resultChars: result.chars,
+        ...(matched.isError ? { isError: true as const } : {}),
       });
     }
   }
@@ -262,7 +268,7 @@ export function computeMetrics(
     rounds: checkToolCalls + checkBashCalls - 1,
     checkToolCalls,
     checkBashCalls,
-    toolCalls: entries.length,
+    toolCalls: entries.filter(e => e.name !== `${MCP}eligian_brief`).length,
     transcriptToolChars,
     toolChars,
     channelChars,

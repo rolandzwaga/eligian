@@ -18,11 +18,13 @@ import {
   type SelectorNotInLayout,
 } from '@eligian/language';
 import { Effect } from 'effect';
-import { glob } from 'tinyglobby';
 import { compileFile } from '../compile-file.js';
+import { expandPatterns, isLibrary } from './files.js';
 import { lintCompiled } from './lint.js';
 import { CHECK_FORMATS, type CheckFormat, formatResults, summarize } from './reporters.js';
 import { reviewConfig } from './review.js';
+
+export { expandPatterns, isLibrary } from './files.js';
 
 export interface CheckOptions {
   readonly format: CheckFormat;
@@ -48,12 +50,6 @@ export interface CheckOutcome {
   readonly exitCode: 0 | 1 | 2;
 }
 
-/** Whether a source is a library file (`library name` after any comments). */
-export function isLibrary(source: string): boolean {
-  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-  return /^\s*library\b/.test(code);
-}
-
 /** Parse --format; undefined when it is not a known format. */
 export function parseCheckFormat(value: string): CheckFormat | undefined {
   return (CHECK_FORMATS as readonly string[]).includes(value) ? (value as CheckFormat) : undefined;
@@ -63,42 +59,6 @@ export function parseCheckFormat(value: string): CheckFormat | undefined {
 export function parseMaxWarnings(value: string): number | undefined {
   return /^\d+$/.test(value.trim()) ? Number(value.trim()) : undefined;
 }
-
-/**
- * Expand patterns to .eligian files. A pattern naming an existing file is used
- * as is (any extension); a directory means every .eligian file below it;
- * anything else is a glob (`examples/**\/*.eligian`). A pattern starting with
- * `!` excludes the files it matches. node_modules is skipped.
- */
-export async function expandPatterns(patterns: readonly string[], cwd: string): Promise<string[]> {
-  // `!pattern` excludes matches of the other patterns
-  const excludes = patterns.filter(p => p.startsWith('!')).map(p => toGlobPath(p.slice(1)));
-  const files = new Set<string>();
-  for (const pattern of patterns.filter(p => !p.startsWith('!'))) {
-    const absolute = path.resolve(cwd, pattern);
-    const stat = fs.statSync(absolute, { throwIfNoEntry: false });
-    if (stat?.isFile() && excludes.length === 0) {
-      files.add(absolute);
-      continue;
-    }
-    const globPattern = stat?.isDirectory()
-      ? `${toGlobPath(path.relative(cwd, absolute)) || '.'}/**/*.eligian`
-      : stat?.isFile()
-        ? toGlobPath(path.relative(cwd, absolute))
-        : toGlobPath(pattern);
-    const matches = await glob(globPattern, {
-      cwd,
-      absolute: true,
-      onlyFiles: true,
-      ignore: ['**/node_modules/**', ...excludes],
-    });
-    for (const match of matches) files.add(path.resolve(match));
-  }
-  return [...files].sort();
-}
-
-/** Globs use forward slashes, also on Windows. */
-const toGlobPath = (p: string) => p.split(path.sep).join('/');
 
 export async function runCheck(
   patterns: readonly string[],

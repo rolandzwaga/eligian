@@ -46,7 +46,9 @@ import {
   rankOperations,
 } from '../../scripts/rank-operations.js';
 import { REVIEW_CODES } from '../check/review.js';
+import { TREE } from '../mcp/brief/tree.js';
 import { sourceOf } from '../mcp/diagnostics.js';
+import { chunkFile } from '../mcp/instructions.js';
 import { ELIGIUS_LINT_RULES } from '../mcp/knowledge/lint-rules.js';
 import { eventName } from '../mcp/knowledge/render.js';
 import type { IndexEntry, Overlays } from '../mcp/knowledge/types.js';
@@ -413,6 +415,28 @@ timeline "main" in "#stage" using custom {
       expect(entry?.words, id).toBeLessThanOrEqual(1500);
     }
   });
+
+  // Spec 059 Phase 1 FR-036 / SC-008: the brief interview's question tree
+  it('brief-questions lists every template question', () => {
+    const entry = index.find(candidate => candidate.id === 'brief-questions');
+    expect(entry).toMatchObject({ kind: 'reference', see: ['decisions', 'storyboard'] });
+    expect(chunkFile({ id: 'brief-questions', kind: 'reference' })).toBe(
+      'generated/brief-questions.md'
+    );
+    expect(chunkOf(read('generated/brief-questions.md')).id).toBe('brief-questions');
+    const body = bodyOf('brief-questions');
+    const lines = body.split('\n').filter(line => /^- [A-Z]\d?: /.test(line));
+    expect(lines).toHaveLength(63);
+    expect(lines).toHaveLength(TREE.length);
+    for (const q of TREE) {
+      expect(
+        lines.filter(line => line.startsWith(`- ${q.id}: `)),
+        q.id
+      ).toHaveLength(1);
+    }
+    expect(wordCount(entry?.card ?? '')).toBeLessThanOrEqual(120);
+    expect(wordCount(body)).toBeLessThanOrEqual(3000);
+  });
 });
 
 describe('literate probes', () => {
@@ -498,6 +522,8 @@ const FR_039_CHUNKS: Record<string, IndexEntry['kind']> = {
   'assets-and-host-modules': 'workflow',
   'host-modules-contract': 'workflow',
   'verification-ladder': 'workflow',
+  // Spec 059 Phase 3 FR-009: the brief interview
+  interview: 'workflow',
 };
 
 /** SC-013(1): the 16 chunks FR-070 adds (B: 6 mapping, C: 3 runtime, D: 7 workflow). */
@@ -522,6 +548,7 @@ const FR_070_CHUNKS = [
 
 /** The generated `reference` chunks (`generated/<id>.md`). */
 const REFERENCE_CHUNKS = [
+  'brief-questions',
   'config-shape',
   'controllers',
   'dataflow-tables',
@@ -632,7 +659,7 @@ describe('curriculum', () => {
 
     const counts: Record<string, number> = {};
     for (const kind of Object.values(FR_039_CHUNKS)) counts[kind] = (counts[kind] ?? 0) + 1;
-    expect(counts).toEqual({ orientation: 5, mapping: 11, runtime: 5, workflow: 8 });
+    expect(counts).toEqual({ orientation: 5, mapping: 11, runtime: 5, workflow: 9 });
 
     // The whole index: the curriculum kinds plus the generated ones; one example per marker
     const indexCounts: Record<string, number> = {};
@@ -1264,6 +1291,125 @@ describe('phase 2 knowledge', () => {
       item.see.filter(id => id.startsWith('example/')).map(id => `${item.id} → ${id}`)
     );
     expect(cited.filter(line => !ids.has(line.slice(line.indexOf('→ ') + 2)))).toEqual([]);
+  });
+});
+
+// Spec 059 Phase 3 (FR-009 to FR-012, SC-006): the interview chunk; storyboard and
+// what-is-eligian follow the brief-first order
+describe('spec 059 phase 3 chunks', () => {
+  let outDir: string;
+  let index: IndexEntry[];
+  const read = (file: string): string => readText(path.join(outDir, file));
+  const entry = (id: string): IndexEntry | undefined => index.find(e => e.id === id);
+  const bodyOf = (id: string): string => chunkOf(read(`curriculum/${id}.md`)).body;
+
+  beforeAll(async () => {
+    outDir = await generatedDocs();
+    index = JSON.parse(read('index.json'));
+  }, 120_000);
+
+  it('interview is a workflow chunk in curriculum/interview.md', () => {
+    expect(entry('interview')?.kind).toBe('workflow');
+    expect(chunkFile({ id: 'interview', kind: 'workflow' })).toBe('curriculum/interview.md');
+    expect(fs.existsSync(path.join(outDir, 'curriculum', 'interview.md'))).toBe(true);
+    expect(chunkOf(read('curriculum/interview.md')).id).toBe('interview');
+  });
+
+  it('interview names its sources and the sign-off words', () => {
+    const body = bodyOf('interview');
+    for (const word of [
+      'decisions',
+      'provider-choice',
+      'presentation-patterns',
+      'css-conventions',
+      'brief-questions',
+      'delegated',
+      'confirmation',
+      'approve-storyboard',
+    ]) {
+      expect(body, word).toContain(word);
+    }
+  });
+
+  // FR-052, FR-053, SC-027: material with a fallback; every round item put to the user.
+  it('interview asks for material with a placeholder fallback and never fills in a round item', () => {
+    const body = bodyOf('interview');
+    expect(body).toContain('Placeholder?');
+    expect(body).toContain(
+      "Send the sign-up URL, or I'll use a placeholder link you replace later. Placeholder?"
+    );
+    expect(body).toContain('You never fill in a round item yourself');
+    expect(body).toContain('by: user');
+  });
+
+  // FR-056, SC-029: the four teaching rules after SC-001 run 2.
+  it('interview re-asks dependents, invents no paths, gives who/when a fallback, asks the variant', () => {
+    const body = bodyOf('interview').replace(/\s+/g, ' ');
+    expect(body).toContain('put every question that depends on it to the user again');
+    expect(body).toContain('Never update a dependent answer yourself');
+    expect(body).toContain('Record a file path only when the user gave it');
+    expect(body).toContain('never make up a path');
+    expect(body).toContain("Or I'll record it as not decided yet. OK?");
+    expect(body).toContain('ask which one, with a recommendation');
+    expect(body).toContain('never pick the variant yourself');
+  });
+
+  // FR-063, SC-030: every material request, in any message, has a fallback.
+  it('interview gives every material request in any message a fallback', () => {
+    const body = bodyOf('interview').replace(/\s+/g, ' ');
+    expect(body).toContain('That holds for every request for material, in any message');
+    expect(body).toContain('Each one ends with a fallback the user can accept with "yes"');
+  });
+
+  // FR-068, SC-031: follow-ups recommended, answers matched by number, every dependent asked.
+  it('interview recommends follow-ups, matches answers by number, asks every dependent', () => {
+    const body = bodyOf('interview').replace(/\s+/g, ' ');
+    expect(body).toContain('Every question in any message names a recommended answer');
+    expect(body).toContain('never an open "Which?"');
+    expect(body).toContain('match each numbered answer to the question with that number');
+    expect(body).toContain(
+      'List every item the round brings back with `previous` and ask each one'
+    );
+  });
+
+  // FR-072, SC-033: a pick for an either/or and for a contradiction.
+  it('interview names a pick for an either/or follow-up and a contradiction', () => {
+    const body = bodyOf('interview').replace(/\s+/g, ' ');
+    expect(body).toContain('A follow-up offering two options names the one you recommend');
+    expect(body).toContain(
+      "When two of the user's answers contradict each other, name the change you recommend"
+    );
+    expect(body).toContain('never an open "Fix or keep?"');
+  });
+
+  it('storyboard names the five problem codes and approve-storyboard', () => {
+    const body = bodyOf('storyboard');
+    for (const word of [
+      'storyboard-ignored-rows',
+      'storyboard-views',
+      'storyboard-header',
+      'storyboard-end-block',
+      'storyboard-interactions',
+      'approve-storyboard',
+    ]) {
+      expect(body, word).toContain(word);
+    }
+    const storyboard = entry('storyboard');
+    expect(storyboard).toBeDefined();
+    const heading = body.split('\n').find(line => line.startsWith('# '));
+    expect(heading).toBeDefined();
+    expect(storyboard?.title).not.toContain('before any Eligian');
+    expect(storyboard?.card).not.toContain('before any Eligian');
+    expect(heading).not.toContain('before any Eligian');
+  });
+
+  it('what-is-eligian step 1 is eligian_brief', () => {
+    const lines = bodyOf('what-is-eligian').split('\n');
+    const method = lines.indexOf('## Working method');
+    expect(method).toBeGreaterThan(-1);
+    const step1 = lines.slice(method + 1).find(line => line.startsWith('1.'));
+    expect(step1).toBeDefined();
+    expect(step1).toContain('eligian_brief');
   });
 });
 

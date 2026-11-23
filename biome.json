@@ -58,7 +58,8 @@
       "!!**/coverage",
       "!!**/out",
       "!!**/dist",
-      "!!**/generated"
+      "!!**/generated",
+      "!!**/.eligian"
     ],
     "ignoreUnknown": true
   },

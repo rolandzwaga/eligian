@@ -441,13 +441,15 @@ eligian mcp
 ```
 
 Starts a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio, so a
-coding agent (Claude Code, Cursor, VS Code Copilot agent mode, Codex) can learn Eligian and
-check what it writes. The client starts the server; you do not run it yourself. Stdout carries
+coding agent (Claude Code, Cursor, VS Code Copilot agent mode, Codex) can interview you about a
+new presentation, learn Eligian and check what it writes. The client starts the server; you do
+not run it yourself. Stdout carries
 only protocol messages. Every tool call logs one JSON line (tool, duration, result size) to
 stderr; set `ELIGIAN_MCP_LOG=<file>` to also append those lines to a file.
 
 | Tool | What it does |
 |---|---|
+| `eligian_brief` | The brief interview, the first call for a new presentation or an addition (see [The brief](#the-brief-eligian_brief) below). Actions `status`, `answer`, `confirm`, `approve-storyboard` and `accept-existing`; `scope` picks the presentation, an addition (`{ addition: 'view' \| 'language' \| 'host-module', name }`) or `adopt`. Returns the state, the next round of questions with the docs to read for a recommendation, the counts, the rejected answers and one `next` instruction. The only writer of `BRIEF.md`. |
 | `eligian_docs` | The curated knowledge: the index without arguments, cards by `ids`, full bodies with `detail: true`, a `query` search. Read-only. |
 | `eligian_operations` | Operation lookup: NEEDS / PROVIDES / ERASES (the operation data each operation reads, writes and removes), parameters, the call form. Filters by name, category, `needs`, `provides`; `kind` lists controllers, timeline events, DOM events and keys; `path` adds a program's host operations. Read-only. |
 | `eligian_check` | Every diagnostic of `eligian check` (compiler, Eligius lint, review pass), each with its fix: suggestions, a quick fix, the source excerpt and a docs overlay. Stricter defaults than the CLI: `lint`, `review`, `selectorNotInLayout: 'ids'`, `maxWarnings: 0`. Read-only. |
@@ -459,7 +461,8 @@ stderr; set `ELIGIAN_MCP_LOG=<file>` to also append those lines to a file.
 
 The docs ship in the package (`node_modules/eligian/dist/docs`), so the server works offline.
 
-**Setup.** Add `eligian` 1.1 or later to the project (`npm install -D eligian`), then register
+**Setup.** Add `eligian` 1.2 or later to the project (`npm install -D eligian`; 1.1 has the
+other eight tools but not the brief), then register
 the project-local install with your client. A direct `node` launch starts fastest (no `npx`
 download, no shell wrapper). The path must be absolute; on Windows write it with backslashes
 (`"C:\work\my-talk\node_modules\eligian\bin\cli.js"` in JSON). `eligian agents setup` writes
@@ -485,7 +488,7 @@ for every client:
 | `codex` | `.codex/config.toml` |
 
 - The entry runs `node` with the absolute path of `node_modules/eligian/bin/cli.js` when that
-  exists in the current directory, else `npx -y eligian@^1.1 mcp` (on Windows, `cmd /c npx …`
+  exists in the current directory, else `npx -y eligian@^1.2 mcp` (on Windows, `cmd /c npx …`
   for every client but Claude Code).
 - Merging changes only what is Eligian's: in a JSON file the `eligian` server key (other servers
   stay), in `config.toml` the `[mcp_servers.eligian]` table, in `AGENTS.md` and
@@ -556,13 +559,13 @@ Codex applies a project's own config only to trusted projects **[UNVERIFIED]**: 
 does not show up, trust the project or add the table to your user config.
 
 **Without a local install**, `npx` fetches the package: use `npx` as the command and
-`-y eligian@^1.1 mcp` as the arguments, for example
-`claude mcp add eligian -s project -- npx -y eligian@^1.1 mcp`. The first start downloads the
+`-y eligian@^1.2 mcp` as the arguments, for example
+`claude mcp add eligian -s project -- npx -y eligian@^1.2 mcp`. The first start downloads the
 package, so it is slower. On native Windows:
 
-- Claude Code (tested with 2.1.302) starts both plain `npx -y eligian@^1.1 mcp` and
-  `cmd /c npx -y eligian@^1.1 mcp`.
-- Cursor, VS Code and Codex: use `cmd` as the command and `/c npx -y eligian@^1.1 mcp` as the
+- Claude Code (tested with 2.1.302) starts both plain `npx -y eligian@^1.2 mcp` and
+  `cmd /c npx -y eligian@^1.2 mcp`.
+- Cursor, VS Code and Codex: use `cmd` as the command and `/c npx -y eligian@^1.2 mcp` as the
   arguments. `npx` is a `npx.cmd` script on Windows, which a client that launches the command
   without a shell cannot start; `cmd /c` starts it from any client. Whether these three need the
   wrapper is **[UNVERIFIED]**. The direct `node` form above needs no wrapper anywhere.
@@ -576,15 +579,36 @@ client that installs from the registry launches it as `npx -y eligian@<version> 
 slower than later starts.
 
 **Claude Code plugin.** The repository is also a Claude Code plugin marketplace with one plugin,
-`eligian`, which registers the server for every project:
+`eligian`, which registers the server and the brief's hook for every project:
 
 ```text
 /plugin marketplace add rolandzwaga/eligian
 /plugin install eligian@eligian
 ```
 
-- The plugin starts the server as `npx -y eligian@^1.1 mcp`: the newest 1.x on npm, which may
+- The plugin starts the server as `npx -y eligian@^1.2 mcp`: the newest 1.x on npm, which may
   differ from the `eligian` version a project has installed.
+- Its `PreToolUse` hook (on `Write`, `Edit` and `MultiEdit`) is the hard stop behind the brief.
+  It blocks, with the reason sent to the agent:
+  1. any write to `BRIEF.md` (only `eligian_brief` writes it; change an answer with
+     `action: answer`);
+  2. a new program: a `Write` that creates a `.eligian` file (not a `library`) in a directory
+     whose brief is not approved, with the gate's code and the `eligian_brief` call to make. In
+     a project with no `.eligian/programs.json` and no `BRIEF.md` that is `brief-required`.
+     Edits to existing programs are not blocked;
+  3. a write to `.eligian/programs.json`, the record of known programs (take in existing work
+     with `action: accept-existing`);
+  4. a write that adds an `Elicitation` or `ElicitationResult` hook to any `.claude/settings.json`
+     or `.claude/settings.local.json`, the project's or your user-level one (`~/.claude/`): such
+     a hook would answer the sign-off dialogs instead of you.
+- The hook runs in every project, Eligian or not, so it starts with `hooks/prefilter.cjs`, a
+  dependency-free Node script: a write to anything but those four kinds of target (`BRIEF.md`,
+  a new `.eligian` file, `.eligian/programs.json`, a `.claude` `settings.json` /
+  `settings.local.json`) exits at once without starting `npx`. Only those four start
+  `npx -y eligian@^1.2 brief gate`, which reads the hook input on stdin and exits 2 with the
+  reason on stderr to block. `eligian brief gate` is the hook's command, not one to run yourself.
+  When `npx` cannot run it (offline, no cache), Claude Code reports a hook error and lets the
+  write through; the server's gate still refuses the generation tools.
 - A project `.mcp.json` whose `eligian` server has the same `npx` command counts as the same
   server: Claude Code starts it once, from the project's definition.
 - A project `.mcp.json` with the `node` form (`node …/node_modules/eligian/bin/cli.js mcp`) is a
@@ -595,7 +619,8 @@ slower than later starts.
 
 **Version.** The `mcp` command exists from 1.1.0. On a 1.0.x install, `eligian mcp` is taken
 as `eligian compile mcp` (compile is the default command) and exits with an I/O error, so the
-client reports a server that failed to start: upgrade to `eligian@^1.1`.
+client reports a server that failed to start: upgrade to `eligian@^1.2`. `eligian_brief`, the
+gate on the generation tools and `eligian brief gate` exist from 1.2.0.
 
 **Security.**
 
@@ -613,15 +638,86 @@ client reports a server that failed to start: upgrade to `eligian@^1.1`.
   allow `../`, so a program inside the root may import a file outside it. `eligian_check` and
   `eligian check` report the same diagnostics for the same program.
 
-#### Resources and the prompt
+#### The brief (`eligian_brief`)
+
+Before an agent writes a new presentation, it interviews you: purpose, audience, the views and
+their navigation, design, languages, assets, custom behaviour, accessibility, delivery. The
+answers are the brief; the code is written from it, not from guesses. Read the `interview` docs
+chunk (and `brief-questions` for every question) to see how the agent is told to run it.
+
+- **The interview.** `action: status` with your idea verbatim starts it and returns the first
+  round (at most 7 questions; `max` 1–20). The agent asks a round in one message, each question
+  with its recommended answer worded so that "yes" accepts it, and records your replies with
+  `action: answer`. "You decide" is recorded as `delegated: true` with the agent's choice, and
+  every delegated answer is shown at sign-off. Facts (your CSS classes, layout ids, locale keys,
+  assets, the installed version) are looked up, never asked. An answer that does not fit is
+  listed under `rejected` with its reason; the others are kept.
+- **The five actions.** `status`, `answer`, `confirm` (sign off the brief once the state is
+  `complete`), `approve-storyboard` (the agent drafts `STORYBOARD.md` from the brief; it must
+  agree with the brief, its views, providers, languages, assets, host module and interactions,
+  or the call is refused with `storyboard-mismatch` and the problems to fix; then you approve
+  it) and `accept-existing` (`paths`: programs you wrote yourself, or that `git pull` brought,
+  added to the record after you confirm). The state goes `open` → `complete` → `confirmed` →
+  `approved`.
+- **The sign-offs.** On a client with elicitation, `confirm` and `approve-storyboard` open a
+  dialog: the counts, the delegated answers and the file, and one checkbox. Declining leaves the
+  state as it was and the agent asks what to change. With no elicitation, or when the dialog is
+  cancelled or not answered within 5 minutes (`elicitation-unavailable`, with a `ticket`), the
+  agent shows you the same summary in the conversation and passes your reply verbatim as
+  `confirmation` (with the `ticket`). The brief records which way it was signed (`elicitation` or `agent-reported`).
+- **The gate.** `eligian_check`, `eligian_compile`, `eligian_fmt`, `eligian_smoke` and
+  `eligian_init` refuse a program until its brief is approved: a tool failure of kind `gate`
+  with a code, the brief's state, the next round of questions and the `next` call. The codes:
+  `brief-required` (an unknown program with no brief; the reply also names `accept-existing`),
+  `brief-incomplete`, `brief-not-confirmed`, `storyboard-not-approved`, `brief-changed` (answers
+  changed after the sign-off; re-confirming shows only those) and `addition-not-briefed`.
+  `eligian_docs`, `eligian_operations` and `eligian_project` are never gated;
+  `eligian_project` reports each directory's brief state and next step. `library` files are not
+  gated.
+- **`BRIEF.md` and `.eligian/programs.json`.** The brief is `<directory>/BRIEF.md`: Markdown you
+  can read, with the idea, the state, every answer (who gave it, which round) and the signed
+  confirmation and approval lines. Only `eligian_brief` writes it; a line typed in by hand, or
+  answers changed after signing, do not count as signed. `.eligian/programs.json` (in the
+  self-ignoring `.eligian/` directory) records the known programs, their timelines, languages
+  and whether they have an `extensions` block. On its first run in a project the server records
+  every existing program as known, so existing work keeps running; afterwards a program enters
+  the record only through an approved brief, an approved addition, `accept-existing` or
+  adoption. `eligian init` writes the first record without its own `main.eligian`, so the
+  starter's first gated call is `brief-required`.
+- **Additions.** Edits inside an existing presentation are free. A new view (a timeline name
+  that is not known), a new language or a first `extensions` block is an addition: the tools
+  refuse with `addition-not-briefed` and a short scoped round. The agent runs it with
+  `scope: { addition: 'view' | 'language' | 'host-module', name }` through the same actions; the
+  answers go into an `## addition` section of `BRIEF.md`.
+- **Adoption.** A presentation built without a brief can get one when you ask for it
+  (`scope: 'adopt'`): what the code settles (views, navigation, providers, languages, assets,
+  host module, keys, controls) is read as facts, and only the rest is asked. Where the code and
+  an answer disagree, the reply says so and you decide. Until the adopted brief is approved the
+  program stays existing work.
+- **The CLI warning.** `eligian check`, `compile`, `smoke`, `fmt` and `dev` print one line on
+  stderr for a program whose brief is not approved, or that is not in the record, for example
+  `eligian: main.eligian — BRIEF.md is open; the open questions: eligian_brief {"action":"status","directory":"."}`.
+  The exit code and stdout do not change, so scripts and CI are unaffected; with no record, an
+  ungoverned program prints nothing.
+- **`ELIGIAN_STATE_DIR`.** The signatures use a key per user and machine, `brief-key` in the
+  state directory outside the project: `ELIGIAN_STATE_DIR` when set, else
+  `%LOCALAPPDATA%\eligian` on Windows, `~/Library/Application Support/eligian` on macOS,
+  `$XDG_STATE_HOME/eligian` (default `~/.local/state/eligian`) elsewhere. A brief signed on
+  another machine is asked to be confirmed again. If you set `ELIGIAN_STATE_DIR`, set it where
+  Claude Code runs (the environment you start it from), not only in the server entry's `env`:
+  the plugin hook is started by Claude Code, not by the server, and with a different key it
+  cannot verify an approved brief, so it blocks every new program.
+
+#### Resources and the prompts
 
 Every docs chunk is also an MCP resource, `eligian://docs/<id>` (`text/markdown`: the chunk's
 title and body, with its card as the description; the ids are those of `eligian_docs`). A client
 that supports resources lets you attach one to a message by @-mention, for example
 `@eligian:eligian://docs/storyboard` in Claude Code.
 
-The prompt `new-presentation` takes one argument, `idea`, and lays out the whole workflow: read
-the storyboard, decisions and project-layout docs, write `STORYBOARD.md`, `eligian_init`,
+The prompt `new-presentation` takes one argument, `idea`, and lays out the whole workflow: the
+brief interview with `eligian_brief` (rounds, `confirm`), the storyboard, decisions and
+project-layout docs, `STORYBOARD.md` and its `approve-storyboard`, `eligian_init`,
 `eligian_project`, the layout and CSS, then the timelines with `eligian_operations` lookups,
 `eligian_check` to 0 errors and 0 warnings, `eligian_compile` with `explain`, `eligian_fmt`,
 `eligian_smoke` with a scenario per interaction and `determinism`, `eligian dev` (reading
@@ -629,6 +725,16 @@ the storyboard, decisions and project-layout docs, write `STORYBOARD.md`, `eligi
 
 ```text
 /mcp__eligian__new-presentation "a two-minute intro to tides, with a chapter menu"
+```
+
+The prompt `add-to-presentation` takes one argument, `addition` (what to add, in your own
+words), for an existing presentation: `eligian_project` on the program, then the decision
+whether it is an addition (a new view, a new language or a first host module) or an edit that
+needs no interview, the scoped brief interview with `eligian_brief` and its storyboard section,
+then the code, `eligian_check`, `eligian_fmt` and `eligian_smoke`:
+
+```text
+/mcp__eligian__add-to-presentation "a French translation"
 ```
 
 ## Options

@@ -256,18 +256,17 @@ describe('the CLI', () => {
     expect(problem).toBeLessThan(summary);
   });
 
-  it('every format reports it', async () => {
-    // pretty and github print no problem codes (FR-033 keeps them byte-identical to Phase 2), so
-    // they are checked by the FR-031 message; json and ndjson carry the code
-    for (const format of ['pretty', 'github', 'json', 'ndjson']) {
-      const result = await cli([fixture('never-removed'), '--determinism', '--format', format]);
-      expect(result.exitCode, `${format}: ${result.stderr}`).toBe(1);
-      expect(result.stdout, format).toContain(
-        format === 'pretty' || format === 'github'
-          ? "element #box: class 'in' present after linear play to"
-          : 'position-nondeterministic'
-      );
-    }
+  // pretty and github print no problem codes (FR-033 keeps them byte-identical to Phase 2), so
+  // they are checked by the FR-031 message; json and ndjson carry the code. One test per format:
+  // each spawns the CLI (~4 s alone), four in one test ran past the 30 s limit under load
+  it.each(['pretty', 'github', 'json', 'ndjson'])('every format reports it: %s', async format => {
+    const result = await cli([fixture('never-removed'), '--determinism', '--format', format]);
+    expect(result.exitCode, `${format}: ${result.stderr}`).toBe(1);
+    expect(result.stdout, format).toContain(
+      format === 'pretty' || format === 'github'
+        ? "element #box: class 'in' present after linear play to"
+        : 'position-nondeterministic'
+    );
   });
 
   it('--determinism --scenario runs both', async () => {

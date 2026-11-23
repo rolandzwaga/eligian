@@ -10,7 +10,6 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   admitsMinimum,
-  findPackageManager,
   hasEligianServer,
   installCommand,
   meetsMinimum,
@@ -259,7 +258,7 @@ const INSTALL: Record<PackageManager, string> = {
   npm: 'npm install',
 };
 
-describe('findPackageManager / installCommand', () => {
+describe('installCommand (findPackageManager: shared-utils package-manager.spec.ts)', () => {
   describe('(1) a lockfile in the folder', () => {
     it.each([
       ['pnpm-lock.yaml', 'pnpm'],
@@ -270,7 +269,6 @@ describe('findPackageManager / installCommand', () => {
     ] as const)('%s → %s', async (lockfile, manager) => {
       const folder = dir('talk');
       write(path.join('talk', lockfile), '');
-      expect(await findPackageManager(folder)).toBe(manager);
       expect(await installCommand(folder)).toBe(ADD[manager]);
     });
   });
@@ -279,7 +277,6 @@ describe('findPackageManager / installCommand', () => {
     it('pnpm-lock.yaml two levels up → pnpm', async () => {
       write('pnpm-lock.yaml', '');
       const folder = dir(path.join('packages', 'talk'));
-      expect(await findPackageManager(folder)).toBe('pnpm');
       expect(await installCommand(folder)).toBe('pnpm add -D eligian@^1.1');
     });
 
@@ -287,7 +284,6 @@ describe('findPackageManager / installCommand', () => {
       write('pnpm-lock.yaml', '');
       write(path.join('packages', 'yarn.lock'), '');
       const folder = dir(path.join('packages', 'talk'));
-      expect(await findPackageManager(folder)).toBe('yarn');
       expect(await installCommand(folder)).toBe('yarn add -D eligian@^1.1');
     });
   });
@@ -296,14 +292,13 @@ describe('findPackageManager / installCommand', () => {
     it('an ancestor package.json with packageManager pnpm@9.0.0 and no lockfile → pnpm', async () => {
       write('package.json', JSON.stringify({ packageManager: 'pnpm@9.0.0' }));
       const folder = dir(path.join('packages', 'talk'));
-      expect(await findPackageManager(folder)).toBe('pnpm');
       expect(await installCommand(folder)).toBe('pnpm add -D eligian@^1.1');
     });
 
     it('in one directory a lockfile wins over the field', async () => {
       write('yarn.lock', '');
       write('package.json', JSON.stringify({ packageManager: 'pnpm@9.0.0' }));
-      expect(await findPackageManager(root)).toBe('yarn');
+      expect(await installCommand(root)).toBe('yarn add -D eligian@^1.1');
     });
   });
 
@@ -316,7 +311,6 @@ describe('findPackageManager / installCommand', () => {
         );
       }
       const folder = dir('talk');
-      expect(await findPackageManager(folder)).toBe('npm');
       expect(await installCommand(folder)).toBe('npm install --save-dev eligian@^1.1');
     });
   });

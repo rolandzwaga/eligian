@@ -3,11 +3,14 @@
  * errors, the tool boundary maps them to the plain declared-failure object, and a defect
  * is logged and answered as `kind: 'internal'`.
  */
-import { Cause, Effect, Exit, Logger, Option } from 'effect';
+import { Cause, Effect, Exit, Logger, Option, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
+import type { GateRefusal } from '../mcp/brief/wire.js';
 import {
   catchDefects,
   type ToolError,
+  ToolFailure,
+  ToolGateRefused,
   ToolInternal,
   ToolIoError,
   ToolNotFound,
@@ -80,6 +83,54 @@ describe('toToolFailure', () => {
     const withoutPath = toToolFailure(header)(cases[1][0]);
     expect('path' in withoutPath.error).toBe(false);
     expect(JSON.stringify(withPath).startsWith('{"header":')).toBe(true);
+  });
+
+  const gate: GateRefusal = {
+    code: 'brief-required',
+    program: '/x/main.eligian',
+    refused: [{ program: '/x/main.eligian', code: 'brief-required' }],
+    brief: '/x/BRIEF.md',
+    directory: '/x',
+    state: 'none',
+    round: [],
+    next: 'Ask the user for their idea and call eligian_brief with action: status.',
+  };
+
+  it('ToolGateRefused maps to kind gate and copies gate', () => {
+    const header = 'eligian 1.1.0 · eligius 4.2.0 · eligian_check · /x';
+    const message = 'brief-required: /x/main.eligian';
+    const path = '/x/main.eligian';
+    const failure = toToolFailure(header)(new ToolGateRefused({ message, path, gate }));
+    expect(failure).toEqual({ header, error: { kind: 'gate', message, path, gate } });
+    expect(Object.keys(failure)[0]).toBe('header');
+  });
+
+  it('ToolFailure decodes a failure with gate and one without', () => {
+    const header = 'eligian 1.1.0 · eligius 4.2.0 · eligian_check · /x';
+    const withGate = {
+      header,
+      error: {
+        kind: 'gate',
+        message: 'addition-not-briefed: /x/main.eligian',
+        gate: {
+          ...gate,
+          code: 'addition-not-briefed',
+          state: 'approved',
+          scope: { addition: 'view', name: 'Outro' },
+          additions: [{ addition: 'view', name: 'Outro' }],
+          changed: [{ id: 'S1', title: 'Goal', value: 'teach' }],
+        },
+      },
+    };
+    expect(Schema.decodeUnknownSync(ToolFailure)(withGate)).toEqual(withGate);
+    const withoutGate = { header, error: { kind: 'not-found', message: 'missing' } };
+    expect(Schema.decodeUnknownSync(ToolFailure)(withoutGate)).toEqual(withoutGate);
+    expect(() =>
+      Schema.decodeUnknownSync(ToolFailure)({
+        header,
+        error: { kind: 'gate', message: 'x', gate: { ...gate, code: 'not-a-code' } },
+      })
+    ).toThrow();
   });
 });
 

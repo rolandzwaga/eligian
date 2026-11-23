@@ -1,0 +1,202 @@
+{
+  "idea": "A product tour in three views: an introduction, a narrated demo video and a sign-up call to action.\nIt runs on the product site and has an English and a Dutch version.",
+  "opening": "I want a product tour for Ledgerly in three views: an introduction, a narrated demo video and a sign-up call to action. It runs on our product site, follows our brand guide and needs an English and a Dutch version.",
+  "answers": {
+    "P1": {
+      "value": "Viewers understand what the product does and sign up for a trial.",
+      "mode": "states"
+    },
+    "P2": { "value": "Start a free trial.", "mode": "states" },
+    "P3": {
+      "value": "Small-business owners.\nThey have heard of the product but have not used it.",
+      "mode": "states"
+    },
+    "P4": { "value": "friendly and confident", "mode": "states" },
+    "P5": { "value": 102, "mode": "states" },
+    "C1": { "value": "self-paced", "mode": "states" },
+    "C2": {
+      "value": [{ "device": "desktop", "primary": "yes" }, { "device": "tablet", "primary": "no" }],
+      "mode": "states"
+    },
+    "C3": { "value": ["mouse", "keyboard"], "mode": "states" },
+    "C4": { "value": "on", "mode": "states" },
+    "C5": { "value": "online", "mode": "states" },
+    "S1": { "value": "slide-deck", "mode": "states" },
+    "S2": {
+      "value": [
+        { "name": "intro", "purpose": "Says what the product is" },
+        { "name": "demo", "purpose": "Shows the product in a narrated video" },
+        { "name": "signup", "purpose": "Asks the viewer to start a trial" }
+      ],
+      "mode": "states"
+    },
+    "S3": { "value": "intro", "mode": "states" },
+    "S4": {
+      "value": [
+        { "view": "intro", "target": "demo", "trigger": "the Next button or the right arrow key" },
+        { "view": "demo", "target": "signup", "trigger": "the Next button or the right arrow key" },
+        { "view": "signup", "target": "intro", "trigger": "the Start over button" },
+        { "view": "demo", "target": "intro", "trigger": "the left arrow key" },
+        { "view": "signup", "target": "demo", "trigger": "the left arrow key" }
+      ],
+      "mode": "states"
+    },
+    "S5": {
+      "value": [
+        { "view": "intro", "end": "advance" },
+        { "view": "demo", "end": "stay" },
+        { "view": "signup", "end": "stay" }
+      ],
+      "mode": "states"
+    },
+    "S6": {
+      "value": [
+        { "view": "intro", "provider": "raf", "source": "-" },
+        { "view": "demo", "provider": "video", "source": "media/demo.mp4" },
+        { "view": "signup", "provider": "raf", "source": "-" }
+      ],
+      "mode": "states"
+    },
+    "S7": { "value": true, "mode": "states" },
+    "S8": { "value": "stay", "mode": "states" },
+    "V1:intro": { "value": "The product keeps your bookkeeping in one place.", "mode": "states" },
+    "V2:intro": { "value": "Meet Ledgerly\nYour books, in one place.", "mode": "states" },
+    "V3:intro": {
+      "value": [{ "element": "hero", "kind": "image", "file": "-" }],
+      "mode": "states"
+    },
+    "V4:intro": {
+      "value": "The hero image fades in, then the title, then the subtitle.",
+      "mode": "states"
+    },
+    "V5:intro": {
+      "value": { "duration": "12", "pacing": "fixed", "cues-from": "-" },
+      "mode": "states"
+    },
+    "V6:intro": { "value": "The Next button goes to the demo.", "mode": "states" },
+    "V1:demo": { "value": "Bookkeeping takes minutes, not hours.", "mode": "states" },
+    "V2:demo": { "value": "See it in action", "mode": "states" },
+    "V3:demo": {
+      "value": [{ "element": "demo video", "kind": "video", "file": "media/demo.mp4" }],
+      "mode": "states"
+    },
+    "V4:demo": {
+      "value": "The title shows, then the video plays; captions follow the narration.",
+      "mode": "states"
+    },
+    "V5:demo": {
+      "value": { "duration": "90", "pacing": "cues", "cues-from": "the product team" },
+      "mode": "states"
+    },
+    "V6:demo": { "value": "The video toggles play and pause on click.", "mode": "states" },
+    "V1:signup": { "value": "Starting a trial is free.", "mode": "states" },
+    "V2:signup": { "value": "Start your free trial\nNo credit card needed.", "mode": "states" },
+    "V3:signup": {
+      "value": [{ "element": "signup button", "kind": "button", "file": "-" }],
+      "mode": "states"
+    },
+    "V4:signup": {
+      "value": "The heading and the button appear together and stay.",
+      "mode": "states"
+    },
+    "V5:signup": {
+      "value": { "duration": "none", "pacing": "none", "cues-from": "-" },
+      "mode": "states"
+    },
+    "V6:signup": { "value": "The button opens the trial form in a new tab.", "mode": "states" },
+    "I1": { "value": "Play and pause at the bottom of the demo view.", "mode": "states" },
+    "I2": {
+      "value": [
+        { "key": "ArrowRight", "action": "next view" },
+        { "key": "ArrowLeft", "action": "previous view" },
+        { "key": "Space", "action": "play or pause the demo video" }
+      ],
+      "mode": "states"
+    },
+    "I3": { "value": ["counter"], "mode": "states" },
+    "I4": { "value": "restart", "mode": "states" },
+    "D1": {
+      "value": "The Ledgerly brand guide, version 3 (colours, type, logo use).",
+      "mode": "states"
+    },
+    "D2": { "value": "White background, navy text, green accent; light only.", "mode": "states" },
+    "D3": {
+      "value": [{ "font": "Arial", "source": "system", "file": "-", "licence": "-" }],
+      "mode": "states"
+    },
+    "D4": { "value": { "choice": "fixed-ratio", "detail": "16:9" }, "mode": "states" },
+    "D5": {
+      "value": [
+        { "view": "intro", "layout": "title over a full-bleed image" },
+        { "view": "demo", "layout": "full-bleed media" },
+        { "view": "signup", "layout": "centred call to action" }
+      ],
+      "mode": "states"
+    },
+    "D6": { "value": "Gentle fades and slides, 400 ms, ease-out.", "mode": "states" },
+    "D7": { "value": "shorten", "mode": "states" },
+    "D8": { "value": "Product photos from the brand library.", "mode": "states" },
+    "L1": {
+      "value": [{ "code": "en-US", "default": "yes" }, { "code": "nl-NL", "default": "no" }],
+      "mode": "states"
+    },
+    "L2": {
+      "value": [
+        { "language": "en-US", "supplier": "the marketing team", "when": "now" },
+        { "language": "nl-NL", "supplier": "a translation agency", "when": "before launch" }
+      ],
+      "mode": "states"
+    },
+    "L3": { "value": "A language toggle in the top right corner.", "mode": "states" },
+    "L4": { "value": "none", "mode": "states" },
+    "A1": {
+      "value": [
+        { "asset": "intro: hero", "who": "the design team", "when": "next week" },
+        { "asset": "media/demo.mp4", "who": "the video team", "when": "before launch" }
+      ],
+      "mode": "states"
+    },
+    "A2": {
+      "value": { "choice": "yes", "kind": "grey boxes with the asset name" },
+      "mode": "states"
+    },
+    "A3": { "value": "none", "mode": "states" },
+    "A4": {
+      "value": [
+        {
+          "file": "media/demo.mp4",
+          "poster": "media/demo-poster.jpg",
+          "captions": "media/demo.vtt",
+          "loop": "no",
+          "muted": "no"
+        }
+      ],
+      "mode": "states"
+    },
+    "A5": {
+      "value": [{ "image": "intro: hero", "alt": "A small-business owner at a laptop" }],
+      "mode": "states"
+    },
+    "A6": { "value": "project", "mode": "states" },
+    "H1": { "value": "none", "mode": "states" },
+    "X1": { "value": "wcag-2.2-aa", "mode": "states" },
+    "X2": { "value": true, "mode": "states" },
+    "X3": { "value": { "focus": "yes", "announce": "yes" }, "mode": "states" },
+    "X4": { "value": "captions", "mode": "states" },
+    "X5": { "value": true, "mode": "states" },
+    "R1": {
+      "value": { "choice": "embedded", "detail": "the product site's tour page" },
+      "mode": "states"
+    },
+    "R2": {
+      "value": "The last two versions of Chrome, Edge, Firefox and Safari.",
+      "mode": "states"
+    },
+    "R3": { "value": "main.eligian", "mode": "states" },
+    "R4": { "value": false, "mode": "states" },
+    "W1": { "value": "Spacing, easing and the exact timing within each view.", "mode": "states" },
+    "W2": { "value": "first-view", "mode": "states" },
+    "W3": { "value": "The marketing lead approves both language versions.", "mode": "states" }
+  },
+  "script": []
+}

@@ -1,0 +1,284 @@
+# Brief
+
+<!-- Written by eligian_brief. Agents: change answers only through eligian_brief. People may edit by hand; the tool re-reads this file on every call. -->
+
+> A tour of every answer shape.
+>
+> The second paragraph, after an empty line.
+> # not a heading
+
+- tree: 1
+- state: confirmed
+- confirmation: agent-reported 2026-11-19T10:00:00.000Z sha256:7092964b333a58bcbff2c4e26fc6db63c7eed1df4fdcaa6a916a6d2e27d9f45b
+- confirmation-message: "Confirmed: \"all of it\"\nwith a second line"
+- approval: none
+
+## P: Purpose
+
+### P1: What should a viewer know, feel or do afterwards?
+
+- by: user
+- round: 1
+
+\# Not a heading
+\\# escaped once
+\\\## escaped twice
+plain
+
+### P2: What does the last screen ask of the viewer?
+
+- by: user
+- round: 1
+
+none
+
+### P3: Who watches, and what do they already know?
+
+- by: delegated
+- round: 1
+
+Designers.
+
+They know the product.
+
+
+### P4: What tone: formal, playful, technical, …?
+
+- by: user
+- round: 1
+
+Formal
+
+### P5: How long should it take to watch?
+
+- by: delegated
+- round: 1
+
+90s
+
+## C: Context of use
+
+### C1: How is it used: self-paced on a web page, led by a presenter, an unattended loop, or embedded in an app?
+
+- by: user
+- round: 1
+
+presenter
+
+### C2: On which devices, and which is the main one?
+
+- by: user
+- round: 1
+
+| device | primary |
+| --- | --- |
+| desktop | yes |
+| phone | no |
+
+### C3: Which inputs: mouse, touch, keyboard, clicker?
+
+- by: user
+- round: 1
+
+mouse, keyboard
+
+### C4: Is sound heard, or must it work muted?
+
+- by: user
+- round: 1
+
+both
+
+### C5: Online, or must it run offline?
+
+- by: user
+- round: 1
+
+offline
+
+## S: Structure
+
+### S1: Which architecture: slide deck, hub and chapters, media annotation, scrollytelling, one timed piece?
+
+- by: user
+- round: 2
+- reviewed: 5
+
+hub-and-chapters
+
+### S2: Which views are there: a name and a one-line purpose for each, in order?
+
+- by: user
+- round: 3
+
+| name | purpose |
+| --- | --- |
+| intro | The \| promise |
+| demo | A \\| literal |
+
+### S3: Which view opens first?
+
+- by: user
+- round: 4
+
+intro
+
+### S4: From each view, where can the viewer go, and how?
+
+- by: user
+- round: 4
+
+| view | target | trigger |
+| --- | --- | --- |
+| intro | demo | click \| tap on #next |
+
+### S5: When a view's timeline ends: stay, advance, loop, or return to the hub?
+
+- by: user
+- round: 4
+
+| view | end |
+| --- | --- |
+| intro | advance |
+| demo | stay |
+
+### S6: What drives each view's time: `raf`, `video`, `audio`, `scroll`?
+
+- by: user
+- round: 4
+
+| view | provider | source |
+| --- | --- | --- |
+| intro | raf | - |
+| demo | video | media/demo.mp4 |
+
+### S7: Is there a Start button before media with sound?
+
+- by: user
+- round: 5
+
+no
+
+## V: One copy per view
+
+_One section per view below._
+
+## View: intro
+
+### V2: What is every text on it, word for word?
+
+- by: user
+- round: 6
+- basis: d1b1750b8b8f91e1
+
+Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of t.
+
+### V3: What is on screen besides text: images, video, lists, figures, buttons?
+
+- by: user
+- round: 6
+- basis: d1b1750b8b8f91e1
+
+none
+
+## View: demo
+
+### V3: What is on screen besides text: images, video, lists, figures, buttons?
+
+- by: user
+- round: 6
+- basis: ebad6280abbd47fe
+
+| element | kind | file |
+| --- | --- | --- |
+| Product video | video | media/demo.mp4 |
+| A \| B list | list | - |
+
+### V5: How long does the view last, and what paces it: fixed seconds, cue points of the media (and who supplies them), or a staggered list?
+
+- by: delegated
+- round: 6
+- basis: ebad6280abbd47fe
+
+| field | value |
+| --- | --- |
+| duration | none |
+| pacing | none |
+| cues-from | - |
+
+## I: Interaction
+
+### I3: Is progress shown: a bar, a slide counter, a chapter menu?
+
+- by: user
+- round: 5
+
+none
+
+### I5: Are touch gestures (swipe) needed? They are not built in and need a host module.
+
+- by: user
+- round: 5
+
+yes
+
+## D: Visual design
+
+### D4: A fixed-ratio stage scaled to the window (which ratio), or a fluid layout (which breakpoints)?
+
+- by: user
+- round: 5
+
+| field | value |
+| --- | --- |
+| choice | fixed-ratio |
+| detail | 16:9 \| letterboxed |
+
+## L: Languages
+
+### L1: Which languages, and which is the default?
+
+- by: user
+- round: 5
+
+| code | default |
+| --- | --- |
+| en-US | yes |
+
+## A: Assets
+
+_No answers yet._
+
+## H: Custom behaviour
+
+_No answers yet._
+
+## X: Accessibility
+
+_No answers yet._
+
+## R: Delivery
+
+### R3: Which directory and entry file name?
+
+- by: user
+- round: 1
+
+site/main.eligian
+
+## W: Working agreement
+
+_No answers yet._
+
+## Facts
+
+<!-- Computed by eligian_brief when it writes this file; never read back. -->
+
+- server-eligian: 1.1.0
+- eligian-installed: 1.1.0
+- package-manager: pnpm
+- text-direction: en-US ltr
+
+| asset | kind | state |
+| --- | --- | --- |
+| media/demo.mp4 | video | missing |

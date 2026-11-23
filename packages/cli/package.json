@@ -2,7 +2,7 @@
   "name": "eligian",
   "mcpName": "io.github.rolandzwaga/eligian",
   "description": "Compiler and command line for Eligian, a concise DSL for Eligius presentations: check, compile, bundle, play and format .eligian files.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "license": "MIT",
   "author": "Roland Zwaga",
@@ -68,6 +68,7 @@
   },
   "devDependencies": {
     "@eligian/language": "workspace:*",
+    "@eligian/shared-utils": "workspace:*",
     "@modelcontextprotocol/inspector": "2.14.0",
     "@types/jsdom": "30.0.0",
     "tsx": "4.23.15"

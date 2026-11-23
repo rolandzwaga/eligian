@@ -2,10 +2,14 @@
  * Spec 058 Phase 5 (FR-016–FR-020a; SC-008; plan C1–C2): the Claude Code marketplace and its one
  * plugin cannot drift from the CLI. The plugin's server entry is what `serverEntry('claude', npx)`
  * produces (on Windows and on POSIX), its version is the CLI's, the plugin directory holds only
- * `plugin.json` and `.mcp.json`, and no Cursor or Codex plugin exists. `claude plugin validate
- * --strict` (SC-007) runs locally; these structural checks back it in CI.
+ * `plugin.json`, `.mcp.json` and the hook (`hooks/hooks.json`, `hooks/prefilter.cjs`), and no
+ * Cursor or Codex plugin exists. `claude plugin validate --strict` (SC-007) runs locally; these
+ * structural checks back it in CI.
+ * Spec 059 Phase 3 (FR-022 to FR-025, SC-010): one PreToolUse hook runs the prefilter, whose
+ * package spec is the server entry's; the marketplace and the README name `eligian@^1.2`.
  */
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -17,6 +21,8 @@ const PLUGIN = path.join(REPO, 'plugins', 'claude', 'eligian');
 const MARKETPLACE_DIR = path.join(REPO, '.claude-plugin');
 
 const readJson = (file: string): any => JSON.parse(fs.readFileSync(file, 'utf8'));
+const PREFILTER = path.join(PLUGIN, 'hooks', 'prefilter.cjs');
+const README = path.join(REPO, 'packages', 'cli', 'README.md');
 
 /** Every file under `dir`, recursive, POSIX-relative, dot-files included, sorted. */
 function listFiles(dir: string): string[] {
@@ -49,8 +55,58 @@ describe('the Claude Code plugin (FR-016, FR-019, SC-008)', () => {
     expect(plugin.version).toBe(cliPkg.version);
   });
 
-  it('holds exactly plugin.json and .mcp.json', () => {
-    expect(listFiles(PLUGIN)).toEqual(['.claude-plugin/plugin.json', '.mcp.json']);
+  it('holds exactly plugin.json, .mcp.json, hooks/hooks.json and hooks/prefilter.cjs', () => {
+    expect(listFiles(PLUGIN)).toEqual([
+      '.claude-plugin/plugin.json',
+      '.mcp.json',
+      'hooks/hooks.json',
+      'hooks/prefilter.cjs',
+    ]);
+  });
+
+  it('hooks.json has one PreToolUse entry with the prefilter command', () => {
+    expect(readJson(path.join(PLUGIN, 'hooks', 'hooks.json'))).toEqual({
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: 'Write|Edit|MultiEdit',
+            hooks: [
+              {
+                type: 'command',
+                command: 'node',
+                // biome-ignore lint/suspicious/noTemplateCurlyInString: Claude Code's literal variable
+                args: ['${CLAUDE_PLUGIN_ROOT}/hooks/prefilter.cjs'],
+              },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
+  it("the prefilter's package spec is the server entry's", () => {
+    const mcp = readJson(path.join(PLUGIN, '.mcp.json'));
+    const prefilter = createRequire(import.meta.url)(PREFILTER) as {
+      readonly NPX_GATE_ARGS: readonly string[];
+    };
+    expect(prefilter.NPX_GATE_ARGS[1]).toBe(mcp.mcpServers.eligian.args[1]);
+    expect(prefilter.NPX_GATE_ARGS[1]).toBe('eligian@^1.2');
+  });
+
+  it('the prefilter requires only node: builtins', () => {
+    const source = fs.readFileSync(PREFILTER, 'utf8');
+    const required = [...source.matchAll(/require\(\s*(['"`])([^'"`]+)\1\s*\)/g)].map(m => m[2]);
+    expect(required.length).toBeGreaterThan(0);
+    for (const id of required) expect(id.startsWith('node:'), id).toBe(true);
+    expect(source).not.toMatch(/\bimport\s*\(/);
+    expect(source).not.toMatch(/^\s*import\s/m);
+  });
+
+  it('the marketplace description names eligian@^1.2 and eligian_brief', () => {
+    const marketplace = readJson(path.join(MARKETPLACE_DIR, 'marketplace.json'));
+    const [entry] = marketplace.plugins;
+    expect(entry.description).toContain('eligian@^1.2');
+    expect(entry.description).toContain('eligian_brief');
   });
 
   it('has the marketplace keys and a ./ source that resolves', () => {
@@ -94,11 +150,11 @@ describe('the Claude Code plugin (FR-016, FR-019, SC-008)', () => {
   });
 
   it('the README names the per-project route and the plugin install', () => {
-    const readme = fs.readFileSync(path.join(REPO, 'packages', 'cli', 'README.md'), 'utf8');
+    const readme = fs.readFileSync(README, 'utf8');
     for (const text of [
       '/plugin marketplace add rolandzwaga/eligian',
       '/plugin install eligian@eligian',
-      'npx -y eligian@^1.1 mcp',
+      'npx -y eligian@^1.2 mcp',
       'eligian agents setup',
       'eligian init',
       'io.github.rolandzwaga/eligian',
@@ -106,5 +162,11 @@ describe('the Claude Code plugin (FR-016, FR-019, SC-008)', () => {
     ]) {
       expect(readme, text).toContain(text);
     }
+  });
+
+  // A regex, so `grep -rn "eligian@^1\.1"` over the sources finds no stale pin, this test included
+  const STALE_PIN = /eligian@\^1\.1/;
+  it(`the README names no ${STALE_PIN.source.replace(/\\/g, '')}`, () => {
+    expect(fs.readFileSync(README, 'utf8')).not.toMatch(STALE_PIN);
   });
 });

@@ -1,0 +1,118 @@
+{
+  "idea": "Something about our new office, not sure yet.",
+  "opening": "Can you make something about our new office? I'm not sure yet what exactly.",
+  "answers": {
+    "P1": { "value": "People like the new office.", "mode": "states" },
+    "P2": { "value": "none", "mode": "states" },
+    "P3": { "value": "Staff, I think.", "mode": "states" },
+    "P4": { "value": "casual", "mode": "states" },
+    "P5": { "value": "viewer-paced", "mode": "states" },
+    "C1": { "value": "self-paced", "mode": "states" },
+    "C2": { "value": [{ "device": "desktop", "primary": "yes" }], "mode": "states" },
+    "C3": { "value": ["mouse"], "mode": "states" },
+    "C4": { "value": "on", "mode": "states" },
+    "C5": { "value": "online", "mode": "states" },
+    "S1": { "value": "slide-deck", "mode": "states" },
+    "S2": {
+      "value": [
+        { "name": "overview", "purpose": "The office" },
+        { "name": "details", "purpose": "Some details" }
+      ],
+      "mode": "states"
+    },
+    "S3": {
+      "values": [
+        { "value": "nowhere", "mode": "states" },
+        { "value": "overview", "mode": "states" }
+      ]
+    },
+    "S4": {
+      "value": [
+        { "view": "overview", "target": "details", "trigger": "a Next button" },
+        { "view": "details", "target": "overview", "trigger": "a Back button" }
+      ],
+      "mode": "states"
+    },
+    "S5": {
+      "value": [{ "view": "overview", "end": "stay" }, { "view": "details", "end": "stay" }],
+      "mode": "states"
+    },
+    "S6": {
+      "value": [
+        { "view": "overview", "provider": "raf", "source": "-" },
+        { "view": "details", "provider": "raf", "source": "-" }
+      ],
+      "mode": "states"
+    },
+    "S8": { "value": "stay", "mode": "states" },
+    "V1:overview": { "value": "There is a new office.", "mode": "states" },
+    "V2:overview": { "value": "Our new office", "mode": "states" },
+    "V3:overview": {
+      "value": [{ "element": "Next button", "kind": "button", "file": "-" }],
+      "mode": "states"
+    },
+    "V4:overview": { "value": "The title appears.", "mode": "states" },
+    "V5:overview": {
+      "value": { "duration": "none", "pacing": "none", "cues-from": "-" },
+      "mode": "states"
+    },
+    "V6:overview": { "value": "The Next button goes to details on click.", "mode": "states" },
+    "V1:details": { "value": "Where things are.", "mode": "states" },
+    "V2:details": { "value": "Details\nMore to follow.", "mode": "states" },
+    "V3:details": {
+      "value": [{ "element": "Back button", "kind": "button", "file": "-" }],
+      "mode": "states"
+    },
+    "V4:details": { "value": "Not sure; something simple.", "mode": "accepts" },
+    "V5:details": {
+      "value": { "duration": "none", "pacing": "none", "cues-from": "-" },
+      "mode": "states"
+    },
+    "V6:details": { "value": "The Back button goes to overview on click.", "mode": "states" },
+    "I3": { "value": "none", "mode": "states" },
+    "I4": { "value": "restart", "mode": "states" },
+    "D1": { "value": "none", "mode": "states" },
+    "D2": { "value": "Something light.", "mode": "decides" },
+    "D3": {
+      "value": [{ "font": "Arial", "source": "system", "file": "-", "licence": "-" }],
+      "mode": "decides"
+    },
+    "D4": { "value": { "choice": "fluid", "detail": "whatever works" }, "mode": "decides" },
+    "D5": {
+      "value": [
+        { "view": "overview", "layout": "title" },
+        { "view": "details", "layout": "title" }
+      ],
+      "mode": "states"
+    },
+    "D6": { "value": "Not much.", "mode": "decides" },
+    "D7": { "value": "keep", "mode": "states" },
+    "L1": { "value": [{ "code": "en-GB", "default": "yes" }], "mode": "states" },
+    "H1": { "value": "none", "mode": "states" },
+    "X1": { "value": "none", "mode": "states" },
+    "X2": { "value": false, "mode": "states" },
+    "X3": { "value": { "focus": "no", "announce": "no" }, "mode": "states" },
+    "R1": { "value": { "choice": "standalone", "detail": "the intranet" }, "mode": "states" },
+    "R2": { "value": "Whatever the office uses.", "mode": "states" },
+    "R3": { "value": "main.eligian", "mode": "states" },
+    "R4": { "value": false, "mode": "states" },
+    "W1": { "value": "Most things.", "mode": "states" },
+    "W2": { "value": "end", "mode": "states" },
+    "W3": { "value": "It looks fine.", "mode": "states" }
+  },
+  "script": [
+    {
+      "afterRound": 8,
+      "answers": [
+        {
+          "id": "S2",
+          "value": [
+            { "name": "overview", "purpose": "The office" },
+            { "name": "details", "purpose": "Where the rooms and desks are" }
+          ]
+        },
+        { "id": "C4", "value": "off" }
+      ]
+    }
+  ]
+}

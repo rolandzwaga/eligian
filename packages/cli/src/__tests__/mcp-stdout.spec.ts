@@ -10,6 +10,10 @@
  * a compiler lock whose `run` dies makes `eligian_check` hit the tool boundary (plan C10).
  * Spec 058 Phase 2 (SC-008(5)): an `eligian_smoke` call through the spawned server, with the
  * default `cliPath`, leaves stdout pure NDJSON.
+ * Spec 059 Phase 1 (SC-009, FR-035): `eligian_brief` `status` and `answer` through the spawned
+ * server leave stdout pure as well.
+ * Spec 059 Phase 2 (SC-014): with a client that announces form elicitation, a refused gated
+ * call, `confirm` and `approve-storyboard` (each `elicitation/create` answered) leave it pure.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -19,12 +23,16 @@ import { Effect, Layer, Stdio, Stream } from 'effect';
 import { afterAll, describe, expect, it, test, vi } from 'vitest';
 import { CompilerLock } from '../mcp/compiler-lock.js';
 import { layerNodeStdio, redirectConsoleToStderr, stderrLoggerLayer } from '../mcp/stdio.js';
+import { evaluateBriefFile, storyboardFor } from './brief-helpers.js';
+import { loadPersona, runPersona, type Step } from './brief-persona-driver.js';
 import { spawnServer, startInMemoryServer } from './mcp-test-client.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(HERE, '__fixtures__', 'mcp');
 const NOISE_PROJECT = path.join(FIXTURES, 'noise-project');
 const SMOKE_PROJECT = path.join(FIXTURES, 'smoke-tool');
+/** Spec 059 Phase 2: a program for the refused gated call (copied after the start scan). */
+const GATE_PROGRAM = path.join(FIXTURES, 'brief', 'gate', 'program');
 const built = fs.existsSync(path.resolve(HERE, '..', '..', 'dist', 'cli.mjs'));
 
 const NOISE_SENTINELS = [
@@ -38,8 +46,18 @@ const INITIALIZE = {
   capabilities: {},
   clientInfo: { name: 'mcp-stdout-spec', version: '0' },
 };
-/** SC-019: red until the CLI version is 1.1.0 (T055) */
-const HEADER = /^eligian 1\.1\.0 · eligius \d+\.\d+\.\d+ · eligian_check · /;
+/** SC-019 (spec 059 FR-026, P18): the header names the CLI version of `package.json` */
+const CLI_VERSION = (
+  JSON.parse(fs.readFileSync(path.resolve(HERE, '..', '..', 'package.json'), 'utf-8')) as {
+    readonly version: string;
+  }
+).version;
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const HEADER = new RegExp(
+  `^eligian ${escapeRegExp(CLI_VERSION)} · eligius \\d+\\.\\d+\\.\\d+ · eligian_check · `
+);
+/** Spec 059: the terse persona supplies the idea and one answer for the brief run. */
+const TERSE = loadPersona('terse');
 
 const tempDirs: string[] = [];
 /** A path in a new temp dir; the test creates the file (the preloads' trigger). */
@@ -266,9 +284,9 @@ describe('stdout carries only protocol frames (server runs)', () => {
           .map(line => JSON.parse(line) as { tool: string });
         expect(telemetry.some(line => line.tool === 'eligian_check')).toBe(true);
 
-        // SC-019: a planned red until T055 bumps the CLI version to 1.1.0
+        // SC-019: the header carries the CLI version of package.json
         expect(payload.header).toMatch(HEADER);
-        expect(text.startsWith('{"header":"eligian 1.1.0 · ')).toBe(true);
+        expect(text.startsWith(`{"header":"eligian ${CLI_VERSION} · `)).toBe(true);
       } finally {
         server.child.kill();
       }
@@ -309,6 +327,162 @@ describe('stdout carries only protocol frames (server runs)', () => {
       }
     },
     60_000
+  );
+
+  // Spec 059 SC-009 (FR-035): the brief interview writes BRIEF.md, never stdout
+  test.skipIf(!built)(
+    'eligian_brief over the spawned server leaves stdout pure',
+    async () => {
+      const project = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-brief-')));
+      tempDirs.push(project);
+      const server = spawnServer({ cwd: project });
+      const recorded = recordStdout(server.child);
+      try {
+        const initialize = await server.request('initialize', INITIALIZE);
+        expect(initialize.result).toBeDefined();
+        server.notify('notifications/initialized');
+
+        const call = async (args: Record<string, unknown>) => {
+          const response = await server.request('tools/call', {
+            name: 'eligian_brief',
+            arguments: args,
+          });
+          expect(response.error, server.stderr()).toBeUndefined();
+          const result = response.result as { content: { text: string }[]; isError?: boolean };
+          const text = result.content[0].text;
+          expect(result.isError, text).not.toBe(true);
+          return JSON.parse(text) as {
+            round: { id: string }[];
+            rejected: unknown[];
+            file: string;
+          };
+        };
+
+        const status = await call({ action: 'status', idea: TERSE.idea });
+        expect(status.round.length).toBeGreaterThan(0);
+        const id = status.round[0].id;
+        const entry = TERSE.answers[id];
+        if (entry === undefined) throw new Error(`the terse persona has no answer for ${id}`);
+        const one = 'values' in entry ? entry.values[0] : entry;
+        const answered = await call({
+          action: 'answer',
+          answers: [
+            { id, value: one.value, ...(one.delegated === true ? { delegated: true } : {}) },
+          ],
+        });
+        expect(answered.rejected).toEqual([]);
+        expect(fs.existsSync(answered.file)).toBe(true);
+
+        await server.close();
+        await recorded.closed;
+
+        expectOnlyFrames(recorded.stdout());
+      } finally {
+        server.child.kill();
+      }
+    },
+    60_000
+  );
+
+  // Spec 059 Phase 2 SC-014: elicitation requests are server request frames on stdout
+  test.skipIf(!built)(
+    'elicitation frames keep stdout pure',
+    async () => {
+      const project = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-elicit-')));
+      const stateDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-state-')));
+      tempDirs.push(project, stateDir);
+      const server = spawnServer({
+        cwd: project,
+        env: { ...process.env, ELIGIAN_STATE_DIR: stateDir },
+      });
+      const recorded = recordStdout(server.child);
+      const elicited: string[] = [];
+      server.onFrame(frame => {
+        const request = frame as {
+          id?: string | number;
+          method?: unknown;
+          params?: { requestedSchema?: { properties?: Record<string, unknown> } };
+        };
+        if (request.method !== 'elicitation/create' || request.id === undefined) return;
+        // the one required boolean: `confirmed` for confirm, `approved` for approve-storyboard
+        const field = Object.keys(request.params?.requestedSchema?.properties ?? {})[0];
+        elicited.push(field);
+        server.send({
+          jsonrpc: '2.0',
+          id: request.id,
+          result: { action: 'accept', content: { [field]: true } },
+        });
+      });
+      try {
+        const initialize = await server.request('initialize', {
+          ...INITIALIZE,
+          capabilities: { elicitation: { form: {} } },
+        });
+        expect(initialize.result).toBeDefined();
+        server.notify('notifications/initialized');
+
+        const call = async (name: string, args: Record<string, unknown>) => {
+          const response = await server.request('tools/call', { name, arguments: args });
+          expect(response.error, server.stderr()).toBeUndefined();
+          const result = response.result as { content: { text: string }[]; isError?: boolean };
+          return { isError: result.isError === true, payload: JSON.parse(result.content[0].text) };
+        };
+        const brief = async (args: Record<string, unknown>) => {
+          const result = await call('eligian_brief', args);
+          expect(result.isError, JSON.stringify(result.payload)).toBe(false);
+          return result.payload;
+        };
+
+        const run = await runPersona(
+          TERSE,
+          async answers => (await brief({ action: 'answer', answers })) as Step,
+          async () => (await brief({ action: 'status', idea: TERSE.idea })) as Step
+        );
+        expect(run.final.state).toBe('complete');
+
+        // a gated call refused: the program's directory has a complete, unconfirmed brief
+        fs.cpSync(GATE_PROGRAM, project, { recursive: true });
+        const refused = await call('eligian_check', { paths: ['main.eligian'] });
+        expect(refused.isError, JSON.stringify(refused.payload)).toBe(true);
+        expect(refused.payload.error.kind).toBe('gate');
+        expect(refused.payload.error.gate.code).toBe('brief-not-confirmed');
+
+        const confirmed = await brief({ action: 'confirm' });
+        expect(confirmed.state).toBe('confirmed');
+        expect(confirmed.signoff).toEqual({ mode: 'elicitation' });
+
+        fs.writeFileSync(
+          path.join(project, 'STORYBOARD.md'),
+          storyboardFor(await evaluateBriefFile(project, { stateDir }))
+        );
+        const approved = await brief({ action: 'approve-storyboard' });
+        expect(approved.state).toBe('approved');
+        expect(approved.signoff).toEqual({ mode: 'elicitation' });
+
+        await server.close();
+        await recorded.closed;
+
+        expect(elicited).toEqual(['confirmed', 'approved']);
+        const requests = server
+          .frames()
+          .filter(
+            frame =>
+              (frame as { method?: unknown }).method === 'elicitation/create' &&
+              (frame as { id?: unknown }).id !== undefined
+          );
+        expect(requests.length).toBeGreaterThanOrEqual(1);
+        expectOnlyFrames(recorded.stdout());
+        expectOnlyFrames(
+          server
+            .stdoutLines()
+            .map(line => `${line}\n`)
+            .join('')
+        );
+      } finally {
+        server.child.kill();
+      }
+    },
+    120_000
   );
 
   test.skipIf(!built)(

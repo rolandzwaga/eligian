@@ -80,6 +80,8 @@ describe('readStoryboard', () => {
         { trigger: 'key ArrowRight', target: '', verb: 'play', timeline: 'Intro' },
       ],
       ignoredRows: 0,
+      header: {},
+      views: [],
     });
   });
 
@@ -155,9 +157,131 @@ describe('readStoryboard', () => {
       interactions: 0,
       interactionRows: [],
       ignoredRows: 0,
+      header: {},
+      views: [],
     });
     expect(() => readStoryboard('|')).not.toThrow();
     expect(() => readStoryboard('||||\n|\n| |')).not.toThrow();
     expect(() => readStoryboard(`${BEAT_HEADER}\n|\n||\n| | | | | | | |`)).not.toThrow();
+  });
+});
+
+describe('header and views (FR-030)', () => {
+  const template = [
+    '# Storyboard: Orbit teaser',
+    '',
+    '-  audience:  visitors of the product page, desktop  ',
+    '- provider: raf (no media; the views are timed text)',
+    '- languages: en-US (default), nl-NL',
+    '- assets: media/intro.mp4, assets/logo.svg',
+    '- host module: none',
+    '- provider: video (a second provider line is not read)',
+    '',
+    '## view Intro (container #stage)',
+    '',
+    'enter: show #intro',
+    '',
+    BEAT_HEADER,
+    BEAT_SEPARATOR,
+    '| Intro | 0 | 6 | #headline | addClass is-visible | removeClass is-visible |',
+    '',
+    '## view Hub & Spokes',
+    '',
+    '## view Details  (container #details)',
+    '',
+    '## views are not a view heading',
+    '### view Nested is not one either',
+    '',
+    '## interactions',
+    '',
+    INTERACTION_HEADER,
+    INTERACTION_SEPARATOR,
+    '| click #next | Details | navigate | Intro |',
+  ].join('\n');
+
+  it('reads - provider:, - languages:, - assets:, - host module:, - audience: outside tables, first occurrence, trimmed; undefined when absent', () => {
+    expect(readStoryboard(template).header).toEqual({
+      audience: 'visitors of the product page, desktop',
+      provider: 'raf (no media; the views are timed text)',
+      languages: 'en-US (default), nl-NL',
+      assets: 'media/intro.mp4, assets/logo.svg',
+      hostModule: 'none',
+    });
+    const partial = readStoryboard(
+      [
+        '- provider: scroll',
+        '| - languages: en-US | inside a table |',
+        '|---|---|',
+        '| - assets: x.png | y |',
+        'prose - audience: not a list item',
+      ].join('\n')
+    );
+    expect(partial.header).toEqual({ provider: 'scroll' });
+    expect(partial.header.languages).toBeUndefined();
+    expect(partial.header.assets).toBeUndefined();
+    expect(partial.header.hostModule).toBeUndefined();
+    expect(partial.header.audience).toBeUndefined();
+    expect(readStoryboard('- host module:\n').header).toEqual({ hostModule: '' });
+    expect(readStoryboard('# Storyboard\n').header).toEqual({});
+  });
+
+  it('views are the ## view headings in order, the text before " (container"', () => {
+    expect(readStoryboard(template).views).toEqual(['Intro', 'Hub & Spokes', 'Details']);
+    const crlf = readStoryboard(template.replace(/\n/g, '\r\n'));
+    expect(crlf.views).toEqual(['Intro', 'Hub & Spokes', 'Details']);
+    expect(crlf.header).toEqual(readStoryboard(template).header);
+    expect(readStoryboard('## view intro\n## view Intro\n## view intro').views).toEqual([
+      'intro',
+      'Intro',
+      'intro',
+    ]);
+  });
+
+  it('the existing fields are unchanged', () => {
+    const storyboard = readStoryboard(template);
+    expect(storyboard.beats).toEqual([
+      {
+        timeline: 'Intro',
+        start: '0',
+        end: '6',
+        selector: '#headline',
+        change: 'addClass is-visible',
+        endBlock: 'removeClass is-visible',
+      },
+    ]);
+    expect(storyboard.interactions).toBe(1);
+    expect(storyboard.interactionRows).toEqual([
+      { trigger: 'click #next', target: 'Details', verb: 'navigate', timeline: 'Intro' },
+    ]);
+    expect(storyboard.ignoredRows).toBe(0);
+    const { header: _header, views: _views, ...rest } = readStoryboard(twoBeatTables);
+    expect(Object.keys(rest).sort()).toEqual([
+      'beats',
+      'ignoredRows',
+      'interactionRows',
+      'interactions',
+    ]);
+  });
+
+  it('never throws', () => {
+    // A seeded generator (mulberry32) over the characters the reader looks at.
+    let seed = 0x5eed;
+    const random = () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const pieces = ['|', '-', ' ', '\n', '\r\n', '#', '## view ', ' (container', ':', '|', 'a'];
+    const words = ['- provider:', '- languages:', '- host module:', '- assets:', '- audience:'];
+    for (let n = 0; n < 500; n++) {
+      let text = '';
+      const length = Math.floor(random() * 80);
+      for (let i = 0; i < length; i++) {
+        const from = random() < 0.2 ? words : pieces;
+        text += from[Math.floor(random() * from.length)];
+      }
+      expect(() => readStoryboard(text)).not.toThrow();
+    }
   });
 });

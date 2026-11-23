@@ -1,0 +1,261 @@
+{
+  "brief": {
+    "idea": "A tour of every answer shape.\n\nThe second paragraph, after an empty line.\n# not a heading",
+    "treeVersion": 1,
+    "confirmation": {
+      "mode": "agent-reported",
+      "at": "2026-11-19T10:00:00.000Z",
+      "hmac": "sha256:7092964b333a58bcbff2c4e26fc6db63c7eed1df4fdcaa6a916a6d2e27d9f45b",
+      "message": "Confirmed: \"all of it\"\nwith a second line"
+    },
+    "answers": [
+      {
+        "id": "P1",
+        "value": "# Not a heading\n\\# escaped once\n\\\\## escaped twice\nplain",
+        "by": "user",
+        "round": 1
+      },
+      {
+        "id": "P2",
+        "value": "none",
+        "by": "user",
+        "round": 1
+      },
+      {
+        "id": "P3",
+        "value": "Designers.\n\nThey know the product.\n",
+        "by": "delegated",
+        "round": 1
+      },
+      {
+        "id": "P4",
+        "value": "Formal",
+        "by": "user",
+        "round": 1
+      },
+      {
+        "id": "P5",
+        "value": 90,
+        "by": "delegated",
+        "round": 1
+      },
+      {
+        "id": "C1",
+        "value": "presenter",
+        "by": "user",
+        "round": 1
+      },
+      {
+        "id": "C2",
+        "value": [
+          {
+            "device": "desktop",
+            "primary": "yes"
+          },
+          {
+            "device": "phone",
+            "primary": "no"
+          }
+        ],
+        "by": "user",
+        "round": 1
+      },
+      {
+        "id": "C3",
+        "value": ["mouse", "keyboard"],
+        "by": "user",
+        "round": 1
+      },
+      {
+        "id": "C4",
+        "value": "both",
+        "by": "user",
+        "round": 1
+      },
+      {
+        "id": "C5",
+        "value": "offline",
+        "by": "user",
+        "round": 1
+      },
+      {
+        "id": "S1",
+        "value": "hub-and-chapters",
+        "by": "user",
+        "round": 2,
+        "reviewed": 5
+      },
+      {
+        "id": "S2",
+        "value": [
+          {
+            "name": "intro",
+            "purpose": "The | promise"
+          },
+          {
+            "name": "demo",
+            "purpose": "A \\| literal"
+          }
+        ],
+        "by": "user",
+        "round": 3
+      },
+      {
+        "id": "S3",
+        "value": "intro",
+        "by": "user",
+        "round": 4
+      },
+      {
+        "id": "S4",
+        "value": [
+          {
+            "view": "intro",
+            "target": "demo",
+            "trigger": "click | tap on #next"
+          }
+        ],
+        "by": "user",
+        "round": 4
+      },
+      {
+        "id": "S5",
+        "value": [
+          {
+            "view": "intro",
+            "end": "advance"
+          },
+          {
+            "view": "demo",
+            "end": "stay"
+          }
+        ],
+        "by": "user",
+        "round": 4
+      },
+      {
+        "id": "S6",
+        "value": [
+          {
+            "view": "intro",
+            "provider": "raf",
+            "source": "-"
+          },
+          {
+            "view": "demo",
+            "provider": "video",
+            "source": "media/demo.mp4"
+          }
+        ],
+        "by": "user",
+        "round": 4
+      },
+      {
+        "id": "S7",
+        "value": false,
+        "by": "user",
+        "round": 5
+      },
+      {
+        "id": "V2:intro",
+        "value": "Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of the second view, written out in full. Every word of t.",
+        "by": "user",
+        "round": 6,
+        "basis": "d1b1750b8b8f91e1"
+      },
+      {
+        "id": "V3:intro",
+        "value": "none",
+        "by": "user",
+        "round": 6,
+        "basis": "d1b1750b8b8f91e1"
+      },
+      {
+        "id": "V3:demo",
+        "value": [
+          {
+            "element": "Product video",
+            "kind": "video",
+            "file": "media/demo.mp4"
+          },
+          {
+            "element": "A | B list",
+            "kind": "list",
+            "file": "-"
+          }
+        ],
+        "by": "user",
+        "round": 6,
+        "basis": "ebad6280abbd47fe"
+      },
+      {
+        "id": "V5:demo",
+        "value": {
+          "duration": "none",
+          "pacing": "none",
+          "cues-from": "-"
+        },
+        "by": "delegated",
+        "round": 6,
+        "basis": "ebad6280abbd47fe"
+      },
+      {
+        "id": "I3",
+        "value": "none",
+        "by": "user",
+        "round": 5
+      },
+      {
+        "id": "I5",
+        "value": true,
+        "by": "user",
+        "round": 5
+      },
+      {
+        "id": "D4",
+        "value": {
+          "choice": "fixed-ratio",
+          "detail": "16:9 | letterboxed"
+        },
+        "by": "user",
+        "round": 5
+      },
+      {
+        "id": "L1",
+        "value": [
+          {
+            "code": "en-US",
+            "default": "yes"
+          }
+        ],
+        "by": "user",
+        "round": 5
+      },
+      {
+        "id": "R3",
+        "value": "site/main.eligian",
+        "by": "user",
+        "round": 1
+      }
+    ]
+  },
+  "facts": {
+    "state": "confirmed",
+    "serverEligian": "1.1.0",
+    "eligianInstalled": "1.1.0",
+    "packageManager": "pnpm",
+    "textDirection": [
+      {
+        "code": "en-US",
+        "direction": "ltr"
+      }
+    ],
+    "assets": [
+      {
+        "key": "media/demo.mp4",
+        "kind": "video",
+        "state": "missing"
+      }
+    ]
+  }
+}

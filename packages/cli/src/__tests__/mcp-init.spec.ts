@@ -6,14 +6,19 @@
  * Phase 2 (FR-065, Q7, I-1; plan D8, P12; SC-011(7)): the agent files of each `client` go
  * through `setupAgents` (merged into existing files, always the `node` form) and the reply
  * lists each with its status.
+ *
+ * Spec 059 Phase 2 (FR-013, FR-058): `eligian_init` is gated. Without a brief it is refused
+ * `brief-required` before any write; the cases that write a starter run under a brief approved
+ * through `eligian_brief` (`approvedBrief`), signed with a test state dir.
  */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { getCompilerVersion, STARTER_ENTRY, starterFiles } from '@eligian/language';
 import { Effect } from 'effect';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { runCheck } from '../check/check-command.js';
+import { makeRecordStore } from '../mcp/brief/known-programs.js';
 import type { EffectAi } from '../mcp/paths.js';
 import {
   DESCRIPTION,
@@ -23,6 +28,7 @@ import {
   NAME,
   type ToolContext,
 } from '../mcp/tools/init.js';
+import { approvedBrief } from './brief-helpers.js';
 import {
   type InMemoryServer,
   startInMemoryServer,
@@ -50,10 +56,16 @@ const expectFailure = (result: ToolCallResult, kind: string) => {
 describe('eligian_init', () => {
   let ai: EffectAi;
   let tmp: string;
+  let stateDir: string;
   const versions = getCompilerVersion();
 
   beforeAll(async () => {
     ai = await import('effect/ai');
+    stateDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-mcp-init-state-')));
+  });
+
+  afterAll(() => {
+    fs.rmSync(stateDir, { recursive: true, force: true });
   });
 
   beforeEach(() => {
@@ -70,13 +82,28 @@ describe('eligian_init', () => {
     docsRoot: DOCS_ROOT,
     versions,
     requestId: 'test-1',
+    gate: { record: makeRecordStore(), stateDir, noteBrief: () => {} },
   });
+  /** FR-058 move (2): the brief of `tmp` approved through the tool, on a server of its own. */
+  const approve = async () => {
+    const server = await startInMemoryServer({
+      cwd: tmp,
+      docsRoot: DOCS_ROOT,
+      brief: { stateDir },
+    });
+    try {
+      await approvedBrief(server, tmp, { stateDir });
+    } finally {
+      await server.close();
+    }
+  };
   const run = (params: InitParameters) => Effect.runPromise(handle(params, context()));
   const fail = (params: InitParameters) =>
     Effect.runPromise(Effect.flip(handle(params, context())));
   const read = (file: string) => fs.readFileSync(path.join(tmp, file), 'utf-8');
 
   it.each(['blank', 'chapters', 'video', 'library'] as const)('template %s', async template => {
+    await approve();
     const payload = await run({ directory: tmp, template });
 
     expect(Object.keys(payload)[0]).toBe('header');
@@ -153,6 +180,7 @@ describe('eligian_init', () => {
     const original = JSON.stringify({ mcpServers: { other }, mine: true }, null, 4);
     fs.writeFileSync(path.join(tmp, '.mcp.json'), `${original.replace(/\n/g, '\r\n')}\r\n`);
     fs.writeFileSync(path.join(tmp, 'AGENTS.md'), '# my agents\n');
+    await approve();
     const payload = await run({ directory: tmp, template: 'blank' });
 
     expect(payload.agentFiles).toEqual([
@@ -180,6 +208,7 @@ describe('eligian_init', () => {
   });
 
   it('client cursor reports .cursor/mcp.json, .cursor/rules/eligian.mdc and AGENTS.md with statuses', async () => {
+    await approve();
     const payload = await run({ directory: tmp, template: 'blank', client: ['cursor'] });
 
     expect(payload.agentFiles).toEqual([
@@ -223,12 +252,14 @@ describe('eligian_init', () => {
   });
 
   it('nextSteps names eligian_project', async () => {
+    await approve();
     const payload = await run({ directory: tmp, template: 'blank' });
     const steps = payload.nextSteps.join('\n');
     expect(steps).toContain('eligian_project');
   });
 
   it('next steps contain explain:true', async () => {
+    await approve();
     const payload = await run({ directory: tmp, template: 'blank' });
     expect(payload.nextSteps).toContain(
       'After the first timeline passes check, call eligian_compile(select, explain:true).'
@@ -236,6 +267,7 @@ describe('eligian_init', () => {
   });
 
   it('writes no agent files with agents: false', async () => {
+    await approve();
     const payload = await run({ directory: tmp, template: 'blank', agents: false });
     expect(fs.existsSync(path.join(tmp, '.mcp.json'))).toBe(false);
     expect(fs.existsSync(path.join(tmp, 'AGENTS.md'))).toBe(false);
@@ -244,12 +276,24 @@ describe('eligian_init', () => {
     expect(payload.agentFiles).toEqual([]);
   });
 
-  it('a write failure is ToolIoError', async () => {
+  it('without a brief: refused brief-required before any write (FR-013)', async () => {
     fs.writeFileSync(path.join(tmp, 'file.txt'), 'a file');
     const directory = path.join(tmp, 'file.txt', 'sub');
     const error = await fail({ directory, template: 'blank' });
+    expect(error._tag).toBe('ToolGateRefused');
+    expect(error._tag === 'ToolGateRefused' ? error.gate.code : undefined).toBe('brief-required');
+    expect(error.path).toBe(path.join(directory, STARTER_ENTRY));
+    expect(fs.statSync(path.join(tmp, 'file.txt')).isFile()).toBe(true);
+    expect(fs.existsSync(path.join(tmp, STARTER_ENTRY))).toBe(false);
+    expect(fs.existsSync(path.join(tmp, '.mcp.json'))).toBe(false);
+  });
+
+  it('under an approved brief: a write failure is ToolIoError naming the directory (spec 058)', async () => {
+    await approve();
+    fs.mkdirSync(path.join(tmp, '.mcp.json'));
+    const error = await fail({ directory: tmp, template: 'blank' });
     expect(error._tag).toBe('ToolIoError');
-    expect(error.path).toBe(directory);
+    expect(error.path).toBe(tmp);
   });
 
   describe('eligian_init on the wire', () => {
@@ -260,18 +304,32 @@ describe('eligian_init', () => {
       server = undefined;
     });
 
-    it('a write failure is kind io', async () => {
+    it('without a brief: kind gate, brief-required, nothing written (FR-013)', async () => {
       fs.writeFileSync(path.join(tmp, 'file.txt'), 'a file');
       const directory = path.join(tmp, 'file.txt', 'sub');
-      server = await startInMemoryServer({ cwd: tmp, docsRoot: tmp });
+      server = await startInMemoryServer({ cwd: tmp, docsRoot: tmp, brief: { stateDir } });
 
       const error = expectFailure(
         await server.callTool(NAME, { directory, template: 'blank' }),
+        'gate'
+      ) as { kind: string; message: string; path?: string; gate: { code: string } };
+
+      expect(error.gate.code).toBe('brief-required');
+      expect(fs.statSync(path.join(tmp, 'file.txt')).isFile()).toBe(true);
+      expect(fs.existsSync(path.join(tmp, '.mcp.json'))).toBe(false);
+    });
+
+    it('under an approved brief: a write failure is kind io (spec 058)', async () => {
+      await approve();
+      fs.mkdirSync(path.join(tmp, '.mcp.json'));
+      server = await startInMemoryServer({ cwd: tmp, docsRoot: DOCS_ROOT, brief: { stateDir } });
+
+      const error = expectFailure(
+        await server.callTool(NAME, { directory: tmp, template: 'blank' }),
         'io'
       );
 
-      expect(error.path).toBe(directory);
-      expect(fs.statSync(path.join(tmp, 'file.txt')).isFile()).toBe(true);
+      expect(error.path).toBe(tmp);
     });
   });
 });

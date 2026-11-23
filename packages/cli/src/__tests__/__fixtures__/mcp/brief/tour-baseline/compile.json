@@ -1,0 +1,312 @@
+{
+  "payload": {
+    "header": "<HEADER>",
+    "ok": true,
+    "view": "summary",
+    "summary": {
+      "timelines": [
+        {
+          "name": "Hub",
+          "uri": "Hub",
+          "type": "animation",
+          "duration": 0,
+          "loop": false,
+          "timelineActions": 1
+        },
+        {
+          "name": "Timeline & Time",
+          "uri": "Timeline & Time",
+          "type": "animation",
+          "duration": 58,
+          "loop": false,
+          "timelineActions": 9
+        },
+        {
+          "name": "Actions",
+          "uri": "Actions",
+          "type": "animation",
+          "duration": 62,
+          "loop": false,
+          "timelineActions": 9
+        },
+        {
+          "name": "Logic",
+          "uri": "Logic",
+          "type": "animation",
+          "duration": 64,
+          "loop": false,
+          "timelineActions": 11
+        },
+        {
+          "name": "Timeline Power Tools",
+          "uri": "Timeline Power Tools",
+          "type": "animation",
+          "duration": 57,
+          "loop": false,
+          "timelineActions": 14
+        },
+        {
+          "name": "Files & Imports",
+          "uri": "Files & Imports",
+          "type": "animation",
+          "duration": 60,
+          "loop": false,
+          "timelineActions": 9
+        },
+        {
+          "name": "Engine Reach",
+          "uri": "Engine Reach",
+          "type": "animation",
+          "duration": 73,
+          "loop": false,
+          "timelineActions": 10
+        },
+        {
+          "name": "The Editor",
+          "uri": "The Editor",
+          "type": "animation",
+          "duration": 106,
+          "loop": false,
+          "timelineActions": 45
+        },
+        {
+          "name": "The Command Line",
+          "uri": "The Command Line",
+          "type": "animation",
+          "duration": 87,
+          "loop": false,
+          "timelineActions": 161
+        }
+      ],
+      "actions": [
+        "ch3Badge",
+        "ch3RevealBullets",
+        "ch3LoopControl",
+        "cfPlaceHint",
+        "ch5BroadcastPing",
+        "ch5Stamp",
+        "ch5Dutch",
+        "ch5English",
+        "hubUnwire",
+        "revealBlock",
+        "spotlight",
+        "clearSpots",
+        "callout",
+        "narrate",
+        "demo",
+        "revealCard",
+        "showView",
+        "hideView",
+        "enterChapter",
+        "replayChapter",
+        "leaveChapter",
+        "presentation.resetChapter",
+        "__nav__timeline_time_096a5465",
+        "__nav__actions_e65fb504",
+        "__nav__logic_5aedf3b1",
+        "__nav__timeline_power_tools_7df5a7d8",
+        "__nav__files_imports_a1fb2668",
+        "__nav__engine_reach_70252e34",
+        "__nav__the_editor_0afaf5ad",
+        "__nav__the_command_line_09ae2675",
+        "__nav__hub_4717fc8c",
+        "__on__toggle"
+      ],
+      "eventActions": ["ch5OnPing"],
+      "initActions": 0,
+      "operations": {
+        "selectElement": 257,
+        "when": 4,
+        "removeClass": 19,
+        "addClass": 165,
+        "otherwise": 2,
+        "endWhen": 4,
+        "forEach": 2,
+        "endForEach": 2,
+        "continueForEach": 1,
+        "breakForEach": 1,
+        "setOperationData": 9,
+        "concatenateStrings": 7,
+        "setElementContent": 3,
+        "broadcastEvent": 15,
+        "stampTime": 1,
+        "removeControllerFromElement": 27,
+        "scrollToElement": 2,
+        "wait": 1,
+        "animate": 1,
+        "requestAction": 498,
+        "startAction": 498,
+        "getControllerInstance": 55,
+        "addControllerToElement": 55,
+        "toggleClass": 7
+      },
+      "controllers": [
+        "ProgressbarController",
+        "LabelController",
+        "DOMEventListenerController",
+        "KeyboardController"
+      ],
+      "chars": 633358
+    }
+  },
+  "isError": false,
+  "raw": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"header\":\"<HEADER>\",\"ok\":true,\"view\":\"summary\",\"summary\":{\"timelines\":[{\"name\":\"Hub\",\"uri\":\"Hub\",\"type\":\"animation\",\"duration\":0,\"loop\":false,\"timelineActions\":1},{\"name\":\"Timeline & Time\",\"uri\":\"Timeline & Time\",\"type\":\"animation\",\"duration\":58,\"loop\":false,\"timelineActions\":9},{\"name\":\"Actions\",\"uri\":\"Actions\",\"type\":\"animation\",\"duration\":62,\"loop\":false,\"timelineActions\":9},{\"name\":\"Logic\",\"uri\":\"Logic\",\"type\":\"animation\",\"duration\":64,\"loop\":false,\"timelineActions\":11},{\"name\":\"Timeline Power Tools\",\"uri\":\"Timeline Power Tools\",\"type\":\"animation\",\"duration\":57,\"loop\":false,\"timelineActions\":14},{\"name\":\"Files & Imports\",\"uri\":\"Files & Imports\",\"type\":\"animation\",\"duration\":60,\"loop\":false,\"timelineActions\":9},{\"name\":\"Engine Reach\",\"uri\":\"Engine Reach\",\"type\":\"animation\",\"duration\":73,\"loop\":false,\"timelineActions\":10},{\"name\":\"The Editor\",\"uri\":\"The Editor\",\"type\":\"animation\",\"duration\":106,\"loop\":false,\"timelineActions\":45},{\"name\":\"The Command Line\",\"uri\":\"The Command Line\",\"type\":\"animation\",\"duration\":87,\"loop\":false,\"timelineActions\":161}],\"actions\":[\"ch3Badge\",\"ch3RevealBullets\",\"ch3LoopControl\",\"cfPlaceHint\",\"ch5BroadcastPing\",\"ch5Stamp\",\"ch5Dutch\",\"ch5English\",\"hubUnwire\",\"revealBlock\",\"spotlight\",\"clearSpots\",\"callout\",\"narrate\",\"demo\",\"revealCard\",\"showView\",\"hideView\",\"enterChapter\",\"replayChapter\",\"leaveChapter\",\"presentation.resetChapter\",\"__nav__timeline_time_096a5465\",\"__nav__actions_e65fb504\",\"__nav__logic_5aedf3b1\",\"__nav__timeline_power_tools_7df5a7d8\",\"__nav__files_imports_a1fb2668\",\"__nav__engine_reach_70252e34\",\"__nav__the_editor_0afaf5ad\",\"__nav__the_command_line_09ae2675\",\"__nav__hub_4717fc8c\",\"__on__toggle\"],\"eventActions\":[\"ch5OnPing\"],\"initActions\":0,\"operations\":{\"selectElement\":257,\"when\":4,\"removeClass\":19,\"addClass\":165,\"otherwise\":2,\"endWhen\":4,\"forEach\":2,\"endForEach\":2,\"continueForEach\":1,\"breakForEach\":1,\"setOperationData\":9,\"concatenateStrings\":7,\"setElementContent\":3,\"broadcastEvent\":15,\"stampTime\":1,\"removeControllerFromElement\":27,\"scrollToElement\":2,\"wait\":1,\"animate\":1,\"requestAction\":498,\"startAction\":498,\"getControllerInstance\":55,\"addControllerToElement\":55,\"toggleClass\":7},\"controllers\":[\"ProgressbarController\",\"LabelController\",\"DOMEventListenerController\",\"KeyboardController\"],\"chars\":633358}}"
+      }
+    ],
+    "structuredContent": {
+      "header": "<HEADER>",
+      "ok": true,
+      "view": "summary",
+      "summary": {
+        "timelines": [
+          {
+            "name": "Hub",
+            "uri": "Hub",
+            "type": "animation",
+            "duration": 0,
+            "loop": false,
+            "timelineActions": 1
+          },
+          {
+            "name": "Timeline & Time",
+            "uri": "Timeline & Time",
+            "type": "animation",
+            "duration": 58,
+            "loop": false,
+            "timelineActions": 9
+          },
+          {
+            "name": "Actions",
+            "uri": "Actions",
+            "type": "animation",
+            "duration": 62,
+            "loop": false,
+            "timelineActions": 9
+          },
+          {
+            "name": "Logic",
+            "uri": "Logic",
+            "type": "animation",
+            "duration": 64,
+            "loop": false,
+            "timelineActions": 11
+          },
+          {
+            "name": "Timeline Power Tools",
+            "uri": "Timeline Power Tools",
+            "type": "animation",
+            "duration": 57,
+            "loop": false,
+            "timelineActions": 14
+          },
+          {
+            "name": "Files & Imports",
+            "uri": "Files & Imports",
+            "type": "animation",
+            "duration": 60,
+            "loop": false,
+            "timelineActions": 9
+          },
+          {
+            "name": "Engine Reach",
+            "uri": "Engine Reach",
+            "type": "animation",
+            "duration": 73,
+            "loop": false,
+            "timelineActions": 10
+          },
+          {
+            "name": "The Editor",
+            "uri": "The Editor",
+            "type": "animation",
+            "duration": 106,
+            "loop": false,
+            "timelineActions": 45
+          },
+          {
+            "name": "The Command Line",
+            "uri": "The Command Line",
+            "type": "animation",
+            "duration": 87,
+            "loop": false,
+            "timelineActions": 161
+          }
+        ],
+        "actions": [
+          "ch3Badge",
+          "ch3RevealBullets",
+          "ch3LoopControl",
+          "cfPlaceHint",
+          "ch5BroadcastPing",
+          "ch5Stamp",
+          "ch5Dutch",
+          "ch5English",
+          "hubUnwire",
+          "revealBlock",
+          "spotlight",
+          "clearSpots",
+          "callout",
+          "narrate",
+          "demo",
+          "revealCard",
+          "showView",
+          "hideView",
+          "enterChapter",
+          "replayChapter",
+          "leaveChapter",
+          "presentation.resetChapter",
+          "__nav__timeline_time_096a5465",
+          "__nav__actions_e65fb504",
+          "__nav__logic_5aedf3b1",
+          "__nav__timeline_power_tools_7df5a7d8",
+          "__nav__files_imports_a1fb2668",
+          "__nav__engine_reach_70252e34",
+          "__nav__the_editor_0afaf5ad",
+          "__nav__the_command_line_09ae2675",
+          "__nav__hub_4717fc8c",
+          "__on__toggle"
+        ],
+        "eventActions": ["ch5OnPing"],
+        "initActions": 0,
+        "operations": {
+          "selectElement": 257,
+          "when": 4,
+          "removeClass": 19,
+          "addClass": 165,
+          "otherwise": 2,
+          "endWhen": 4,
+          "forEach": 2,
+          "endForEach": 2,
+          "continueForEach": 1,
+          "breakForEach": 1,
+          "setOperationData": 9,
+          "concatenateStrings": 7,
+          "setElementContent": 3,
+          "broadcastEvent": 15,
+          "stampTime": 1,
+          "removeControllerFromElement": 27,
+          "scrollToElement": 2,
+          "wait": 1,
+          "animate": 1,
+          "requestAction": 498,
+          "startAction": 498,
+          "getControllerInstance": 55,
+          "addControllerToElement": 55,
+          "toggleClass": 7
+        },
+        "controllers": [
+          "ProgressbarController",
+          "LabelController",
+          "DOMEventListenerController",
+          "KeyboardController"
+        ],
+        "chars": 633358
+      }
+    },
+    "isError": false
+  }
+}

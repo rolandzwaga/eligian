@@ -1,0 +1,32 @@
+{
+  "payload": {
+    "header": "<HEADER>",
+    "files": [
+      {
+        "file": "<TMP>/tour.eligian",
+        "formatted": true
+      }
+    ],
+    "written": []
+  },
+  "isError": false,
+  "raw": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"header\":\"<HEADER>\",\"files\":[{\"file\":\"<TMP>/tour.eligian\",\"formatted\":true}],\"written\":[]}"
+      }
+    ],
+    "structuredContent": {
+      "header": "<HEADER>",
+      "files": [
+        {
+          "file": "<TMP>/tour.eligian",
+          "formatted": true
+        }
+      ],
+      "written": []
+    },
+    "isError": false
+  }
+}

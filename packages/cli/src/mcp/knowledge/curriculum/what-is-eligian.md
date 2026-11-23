@@ -105,9 +105,10 @@ The VS Code extension adds highlighting, completion, hover docs, a live preview 
 
 ## Working method
 
-1. Plan the presentation in `STORYBOARD.md` (`storyboard`) and pick an architecture (`decisions`).
-2. Scaffold with `eligian_init`, then write the layout and CSS before the timelines.
-3. Before using a construct, read its `map-*` card; before calling an operation, read its card (`eligian_operations`). `operations-index` lists all of them on one page.
-4. Run `eligian_check` after every edit until it reports 0 errors and 0 warnings, then `eligian_fmt`.
+1. Interview the user with `eligian_brief` until the brief is approved; the storyboard is drafted from it and approved there (`interview`, `storyboard`).
+2. Pick an architecture that fits the approved storyboard (`decisions`).
+3. Scaffold with `eligian_init`, then write the layout and CSS before the timelines.
+4. Before using a construct, read its `map-*` card; before calling an operation, read its card (`eligian_operations`). `operations-index` lists all of them on one page.
+5. Run `eligian_check` after every edit until it reports 0 errors and 0 warnings, then `eligian_fmt`.
 
 see: what-is-eligius, project-layout

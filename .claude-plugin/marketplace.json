@@ -6,7 +6,7 @@
     {
       "name": "eligian",
       "source": "./plugins/claude/eligian",
-      "description": "Adds the eligian MCP server (npx -y eligian@^1.1 mcp): docs, operations, check, fmt, compile, project, init, smoke"
+      "description": "Adds the eligian MCP server (npx -y eligian@^1.2 mcp): the brief interview (eligian_brief), docs, operations, check, fmt, compile, project, init, smoke; and a hook that blocks writing a program before its brief is approved"
     }
   ]
 }
