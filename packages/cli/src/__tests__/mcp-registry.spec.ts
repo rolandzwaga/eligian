@@ -157,16 +157,30 @@ function steps(block: string): { name: string; body: string }[] {
     .map(body => ({ name: body.split(/\r?\n/, 1)[0].trim(), body }));
 }
 
-describe('publish-cli.yml (FR-013, SC-006)', () => {
-  const publishSteps = steps(jobBlock(yml, 'publish'));
+describe('publish-cli.yml (FR-013, SC-006; amended 2026-11-23)', () => {
+  const publishJob = jobBlock(yml, 'publish');
+  const registryJob = jobBlock(yml, 'registry');
+  const releaseJob = jobBlock(yml, 'release');
+  const publishSteps = steps(publishJob);
+  const registrySteps = steps(registryJob);
   const names = publishSteps.map(s => s.name);
   const at = (name: string): number => names.indexOf(name);
-  const body = (name: string): string => {
-    const step = publishSteps.find(s => s.name === name);
-    if (step === undefined) throw new Error(`no step '${name}' in the publish job`);
+  const stepBody = (list: { name: string; body: string }[], job: string, name: string): string => {
+    const step = list.find(s => s.name === name);
+    if (step === undefined) throw new Error(`no step '${name}' in the ${job} job`);
     return step.body;
   };
-  const IF_REGISTRY_ONLY = /^\s*if:.*registry_only/m;
+  const body = (name: string): string => stepBody(publishSteps, 'publish', name);
+  const registryBody = (name: string): string => stepBody(registrySteps, 'registry', name);
+  /** The job's own `if:` line (indented four spaces), '' when it has none. */
+  const jobIf = (job: string): string => /^ {4}if:.*$/m.exec(job)?.[0] ?? '';
+  const loopSeconds = (text: string): number => {
+    const attempts = /attempts=(\d+)/.exec(text);
+    const sleep = /sleep (\d+)/.exec(text);
+    expect(attempts).not.toBeNull();
+    expect(sleep).not.toBeNull();
+    return Number(attempts![1]) * Number(sleep![1]);
+  };
 
   it('orders the publish job steps', () => {
     for (const name of [
@@ -175,45 +189,55 @@ describe('publish-cli.yml (FR-013, SC-006)', () => {
       'Install mcp-publisher',
       'Validate server.json',
       'Publish',
-      'Publish to the MCP registry',
       'Keep the tarball',
     ]) {
       expect(at(name), name).toBeGreaterThanOrEqual(0);
     }
     expect(at('Pack')).toBeLessThan(at('Try the package'));
     expect(at('Try the package')).toBeLessThan(at('Install mcp-publisher'));
-    expect(at('Try the package')).toBeLessThan(at('Publish'));
-    expect(at('Publish')).toBeLessThan(at('Publish to the MCP registry'));
-    expect(at('Publish to the MCP registry')).toBeLessThan(at('Keep the tarball'));
     expect(at('Install mcp-publisher')).toBeLessThan(at('Validate server.json'));
     expect(at('Validate server.json')).toBeLessThan(at('Publish'));
+    expect(at('Publish')).toBeLessThan(at('Keep the tarball'));
     expect(names.filter(name => name === 'Publish')).toHaveLength(1);
+    expect(names).not.toContain('Publish to the MCP registry');
   });
 
-  it('pins mcp-publisher by tag and checks its sha256 before extracting', () => {
-    const install = body('Install mcp-publisher');
-    expect(install).toMatch(/releases\/download\/v\d+\.\d+\.\d+\//);
-    expect(install).not.toMatch(/latest/);
-    expect(install).toMatch(/[0-9a-f]{64}/);
-    expect(install.indexOf('sha256sum -c')).toBeGreaterThanOrEqual(0);
-    expect(install.indexOf('tar x')).toBeGreaterThanOrEqual(0);
-    expect(install.indexOf('sha256sum -c')).toBeLessThan(install.indexOf('tar x'));
+  it('pins mcp-publisher by tag and checks its sha256 before extracting, in both jobs', () => {
+    for (const install of [body('Install mcp-publisher'), registryBody('Install mcp-publisher')]) {
+      expect(install).toMatch(/releases\/download\/v\d+\.\d+\.\d+\//);
+      expect(install).not.toMatch(/latest/);
+      expect(install).toMatch(/[0-9a-f]{64}/);
+      expect(install.indexOf('sha256sum -c')).toBeGreaterThanOrEqual(0);
+      expect(install.indexOf('tar x')).toBeGreaterThanOrEqual(0);
+      expect(install.indexOf('sha256sum -c')).toBeLessThan(install.indexOf('tar x'));
+    }
   });
 
-  it('publishes to the registry after npm with a bounded retry and no continue-on-error', () => {
-    const registry = body('Publish to the MCP registry');
+  it('publishes to the registry in its own job after npm: wait for npm, then a bounded retry', () => {
+    expect(registryJob).toContain('needs: publish');
+    expect(registryJob).toContain('id-token: write');
+    const order = registrySteps.map(s => s.name);
+    expect(order.indexOf('Install mcp-publisher')).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf('Install mcp-publisher')).toBeLessThan(order.indexOf('Wait for npm'));
+    expect(order.indexOf('Wait for npm')).toBeLessThan(
+      order.indexOf('Publish to the MCP registry')
+    );
+
+    const wait = registryBody('Wait for npm');
+    expect(wait).toContain('npm view');
+    expect(loopSeconds(wait)).toBeLessThanOrEqual(900);
+    expect(wait).toContain('exit 1');
+
+    const registry = registryBody('Publish to the MCP registry');
     expect(registry).not.toContain('continue-on-error');
     expect(registry.indexOf('login github-oidc')).toBeGreaterThanOrEqual(0);
     expect(registry.indexOf('login github-oidc')).toBeLessThan(
       registry.indexOf('mcp-publisher publish')
     );
-    const attempts = /attempts=(\d+)/.exec(registry);
-    const sleep = /sleep (\d+)/.exec(registry);
-    expect(attempts).not.toBeNull();
-    expect(sleep).not.toBeNull();
-    expect(Number(attempts![1]) * Number(sleep![1])).toBeLessThanOrEqual(300);
+    expect(loopSeconds(registry)).toBeLessThanOrEqual(300);
     expect(registry).toContain('exit 1');
     expect(registry).toContain('registry_only');
+
     const validate = body('Validate server.json');
     expect(validate).toContain('mcp-publisher validate');
     expect(validate).toContain('working-directory: packages/cli');
@@ -221,38 +245,26 @@ describe('publish-cli.yml (FR-013, SC-006)', () => {
 
   it('uses no secrets', () => {
     expect(/secrets\./.test(yml)).toBe(false);
-    expect(jobBlock(yml, 'publish')).toContain('id-token: write');
+    expect(publishJob).toContain('id-token: write');
   });
 
-  it('keeps the release job behind the publish job', () => {
-    expect(jobBlock(yml, 'release')).toContain('needs: publish');
+  it('keeps the release job behind the publish job only, never the registry job', () => {
+    expect(releaseJob).toContain('needs: publish');
+    expect(releaseJob).not.toMatch(/needs:.*registry/);
   });
 
-  it('registry_only skips npm publish and the release, never the registry steps', () => {
+  it('registry_only skips the publish and release jobs and runs the registry job', () => {
     const input = keyBlock(jobBlock(yml, 'workflow_dispatch'), 'registry_only');
     expect(input).toContain('type: boolean');
     expect(input).toContain('default: false');
-    for (const name of [
-      'Build',
-      'Test',
-      'Pack',
-      'Try the package',
-      'Publish',
-      'Keep the tarball',
-    ]) {
-      expect(body(name), name).toMatch(/if:.*registry_only/);
-    }
-    expect(jobBlock(yml, 'release')).toMatch(/if:.*registry_only/);
-    for (const name of [
-      'Install mcp-publisher',
-      'Validate server.json',
-      'Publish to the MCP registry',
-      'Checkout code',
-      'Setup pnpm',
-      'Setup Node.js 24',
-      'Install dependencies',
-    ]) {
-      expect(body(name), name).not.toMatch(IF_REGISTRY_ONLY);
+    expect(jobIf(publishJob)).toContain('!inputs.registry_only');
+    expect(jobIf(releaseJob)).toContain('!inputs.registry_only');
+    // Runs alone under registry_only (publish skipped), else only after npm succeeded
+    expect(jobIf(registryJob)).toContain('inputs.registry_only ||');
+    expect(jobIf(registryJob)).toContain("needs.publish.result == 'success'");
+    expect(jobIf(registryJob)).toContain('!cancelled()');
+    for (const step of registrySteps) {
+      expect(step.body, step.name).not.toMatch(/^\s*if:.*registry_only/m);
     }
   });
 

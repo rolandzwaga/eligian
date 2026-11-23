@@ -16,9 +16,11 @@ name: Publish CLI
 # repository) tags the commit cli-v<version> and creates a GitHub Release with
 # the published tarball attached.
 #
-# After npm, server.json (packages/cli) goes to the MCP registry with the same
-# OIDC token (mcp-publisher, pinned by tag and checksum). If only that step
-# failed, re-run with registry_only: it skips npm and the release.
+# A third job, after npm, waits until npm serves the new version and publishes
+# server.json (packages/cli) to the MCP registry with GitHub OIDC (mcp-publisher,
+# pinned by tag and checksum). The release job does not wait for it: a slow npm
+# never blocks the tag and the Release (2026-11-23, 1.2.0). If only the registry
+# job failed, re-run with registry_only: it runs that job alone.
 on:
   workflow_dispatch:
     inputs:
@@ -40,8 +42,8 @@ jobs:
     name: Publish to npm
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Only what is on main gets published
-    if: github.ref == 'refs/heads/main'
+    # Only what is on main gets published; registry_only runs the registry job alone
+    if: ${{ github.ref == 'refs/heads/main' && !inputs.registry_only }}
 
     permissions:
       contents: read
@@ -76,18 +78,15 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        if: ${{ !inputs.registry_only }}
         run: pnpm run build
 
       - name: Test
-        if: ${{ !inputs.registry_only }}
         run: pnpm test
 
       # pnpm pack runs prepack (the minified production build) and replaces
       # the workspace: ranges; the tarball is what gets published
       - name: Pack
         id: pack
-        if: ${{ !inputs.registry_only }}
         working-directory: packages/cli
         run: |
           pnpm pack
@@ -96,7 +95,6 @@ jobs:
       # The package as a user gets it: installed from the tarball, its
       # dependencies from the registry, run on the examples
       - name: Try the package
-        if: ${{ !inputs.registry_only }}
         run: |
           npm install -g ./packages/cli/eligian-*.tgz
           eligian --version
@@ -129,17 +127,68 @@ jobs:
         run: mcp-publisher validate
 
       - name: Publish
-        if: ${{ !inputs.registry_only }}
         working-directory: packages/cli
         run: npm publish ./eligian-*.tgz
 
+      # The tarball npm got, for the GitHub Release
+      - name: Keep the tarball
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: eligian-tarball
+          path: packages/cli/eligian-*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  registry:
+    name: Publish to the MCP registry
+    needs: publish
+    # After a successful npm publish, or alone with registry_only (publish is then skipped)
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (inputs.registry_only || needs.publish.result == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      # mcp-publisher login github-oidc
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mcp-publisher
+        # The same pinned release and checksum as in the publish job; change both together.
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --output mcp-publisher_linux_amd64.tar.gz \
+            https://github.com/modelcontextprotocol/registry/releases/download/v1.8.7/mcp-publisher_linux_amd64.tar.gz
+          echo "00b21004149a4ce66f0782508ae4a2bce67d1bea395a8da0bd8028159fb59579  mcp-publisher_linux_amd64.tar.gz" | sha256sum -c -
+          tar xzf mcp-publisher_linux_amd64.tar.gz mcp-publisher
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      # The registry checks mcpName against npm, and npm may not serve a new version for
+      # minutes after `npm publish` (1.2.0: more than 2.5): wait up to 60 × 15 s = 900 s.
+      - name: Wait for npm
+        working-directory: packages/cli
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          attempts=60
+          for i in $(seq 1 "$attempts"); do
+            if [ "$(npm view "eligian@$version" version 2>/dev/null)" = "$version" ]; then exit 0; fi
+            if [ "$i" -lt "$attempts" ]; then sleep 15; fi
+          done
+          echo "::error::npm does not serve eligian@$version; re-run with registry_only once it does" >&2
+          exit 1
+
       - name: Publish to the MCP registry
         working-directory: packages/cli
-        # npm may not serve the new version for a while after `npm publish`, and the registry
-        # checks mcpName against npm: retry for up to 6 × 30 s = 180 s. If it still fails, npm has
-        # the version already: re-run this workflow with registry_only = true.
+        # Retry for up to 5 × 30 s = 150 s. If it still fails, npm has the version and the
+        # release job has run: re-run this workflow with registry_only = true.
         run: |
-          attempts=6
+          attempts=5
           for i in $(seq 1 "$attempts"); do
             mcp-publisher login github-oidc
             if mcp-publisher publish; then exit 0; fi
@@ -147,16 +196,6 @@ jobs:
           done
           echo "::error::mcp-publisher publish failed $attempts times; npm has the version: re-run with registry_only" >&2
           exit 1
-
-      # The tarball npm got, for the GitHub Release
-      - name: Keep the tarball
-        if: ${{ !inputs.registry_only }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: eligian-tarball
-          path: packages/cli/eligian-*.tgz
-          if-no-files-found: error
-          retention-days: 7
 
   release:
     name: GitHub Release
