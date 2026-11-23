@@ -402,7 +402,7 @@ The hook has a third rule: it refuses a write to `.claude\settings.json` that ad
 
 The hook has a fourth rule: it refuses an agent write to `.eligian/programs.json`. The record is not signed in Phase 2 (spec 059 phase 2, R-13), so without this rule an agent could add its own program to the record with its editor.
 
-**[UNVERIFIED]** That the hook also runs when the plugin is installed from the marketplace, not loaded with `--plugin-dir`. Test: the Phase 3 exit, `/plugin install eligian@eligian` from this repo.
+**Verified 2026-11-23** (Phase 3 SC-003): the hook also runs when the plugin is installed from the marketplace (`/plugin install eligian@eligian`), not only when loaded with `--plugin-dir`, on Windows.
 
 ---
 
@@ -481,7 +481,7 @@ Touches: `packages\cli\src\mcp\brief\{gate,known-programs,signature,adopt}.ts` (
 
 ### Phase 3: teaching, hook, evals (7 days)
 
-**Status: ✅ COMPLETE (build, 2026-11-20)**: see specs/059-presentation-assistant/phase-3-teaching-hook-evals/compliance.md. SC-001 (interview eval) passed in its seventh run (2026-11-21, `2026-11-21T09-38-58-984Z`: terse 3/3, detailed 2/3, vague 2/3). SC-002 (14 cases) passed in phase run 3 (2026-11-21, `2026-11-21T20-15-39-843Z`: 12/42 = 28.6 % against the baseline's 21.4 %; fix-selectors judged on phase runs 2 and 3 together, 4/6). Exit pending: SC-003 (marketplace hook), the user's run.
+**Status: ✅ COMPLETE (build, 2026-11-20)**: see specs/059-presentation-assistant/phase-3-teaching-hook-evals/compliance.md. SC-001 (interview eval) passed in its seventh run (2026-11-21, `2026-11-21T09-38-58-984Z`: terse 3/3, detailed 2/3, vague 2/3). SC-002 (14 cases) passed in phase run 3 (2026-11-21, `2026-11-21T20-15-39-843Z`: 12/42 = 28.6 % against the baseline's 21.4 %; fix-selectors judged on phase runs 2 and 3 together, 4/6). SC-003 (marketplace hook, Windows) passed on 2026-11-23. Exit met.
 
 Touches: `packages\cli\src\mcp\{instructions,prompts}.ts`, `packages\cli\src\mcp\knowledge\curriculum\{interview,storyboard}.md`, `packages\cli\src\agents.ts`, `packages\cli\src\main.ts` (`brief gate`), `plugins\claude\eligian\`, `evals\mcp\{run.ts,cases\*,personas\*}`, `packages\cli\README.md`, `CHANGELOG.md`.
 
@@ -528,5 +528,5 @@ Touches: `packages\cli\src\mcp\{instructions,prompts}.ts`, `packages\cli\src\mcp
 
 ### Open questions
 
-None. One check remains, marked **[UNVERIFIED]** with its test: the hook in a plugin installed from the marketplace (§6.3).
+None. The last open check, the hook in a plugin installed from the marketplace (§6.3), passed on 2026-11-23 (Phase 3 SC-003).
 - **Follow-up: a `quote` on every `by: user` answer** (from Phase 3's first SC-001 run, 2026-11-20). The agent recorded answers `by: user` that it never asked (the per-view V items of a round, filled in silently; §9 risk 4). The server cannot see the conversation, so it cannot refuse them; Phase 3 teaches against it (phase 3 FR-053). A `quote` field (the user's own words) on each `by: user` answer, kept in `BRIEF.md`, would make every such answer auditable and let the eval check the quote against the user's reply. A tool schema and brief file change; not scheduled.
