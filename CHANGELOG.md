@@ -2,9 +2,11 @@
 
 All notable changes to Eligian: the DSL, its compiler, the CLI and the VS Code extension.
 
-Eligian has not been released yet: every package is still at version `0.0.1` and there are no release tags. This changelog was put together from the git history (274 commits, 2025-10-14 to 2026-11-01). It is grouped by period, newest first. Numbers like (#38) are the pull requests merged into `main`, and the spec numbers refer to `specs/<NNN>-*/`.
+The VS Code extension is on the Visual Studio Marketplace as `rolandzwaga.eligian`, the CLI on npm as `eligian`. Newest first: a release section names its versions and date; the sections before the first release are grouped by period and were put together from the git history (2025-10-14 to 2026-11-01). Numbers like (#38) are the pull requests merged into `main`, and the spec numbers refer to `specs/<NNN>-*/`.
 
-## Unreleased (2026-11-05)
+## CLI 1.2.0 and extension 1.1.0 (2026-11-23)
+
+CLI 1.1.0 was not published; 1.2.0 is the first release with the `mcp` command.
 
 ### Added
 
@@ -45,23 +47,27 @@ Eligian has not been released yet: every package is still at version `0.0.1` and
 ### Changed
 
 - **The VS Code extension requires VS Code 1.145 or later** (was 1.140): `engines.vscode` follows `@types/vscode` 1.145.
-- **Compiler-service recycling tuned from measurements** (spec 058, phase 5): the MCP server recycles the compiler's documents and services every 200 compiler calls (was 100), the largest N in {25, 50, 100, 200} whose heap growth over 500 mixed tool calls stays at or under 25 MB and whose calls that trigger a recycle, and the calls right after one, take at most three times the tool's usual latency (median) (`specs/058-mcp-server/phase-5-hardening-reach/baseline/recycle-measurements.txt`). The soak (`pnpm -C packages/cli run test:soak`) also runs mixed tool calls on the tour.
+- **Compiler-service recycling tuned from measurements** (spec 058, phase 5): the MCP server recycles the compiler's documents and services every 200 compiler calls, so its heap stays flat in long sessions; 200 is the largest N in {25, 50, 100, 200} whose heap growth over 500 mixed tool calls stays at or under 25 MB and whose calls that trigger a recycle, and the calls right after one, take at most three times the tool's usual latency (median) (`specs/058-mcp-server/phase-5-hardening-reach/baseline/recycle-measurements.txt`). The soak (`pnpm -C packages/cli run test:soak`) also runs mixed tool calls on the tour.
 - **`eligian smoke --format json`**: every problem carries its `code` (`smoke-engine-error`, `smoke-selector-miss`, …); the output is otherwise unchanged.
 - **`eligian init` writes agent files**: the MCP server entry and the instructions of each `--client` (default `claude`), merged into existing files as by `eligian agents setup`; `--no-agents` writes none. The `video` starter carries one `media-file-missing` warning until `media/intro.mp4` exists.
 - **`eligian_init` merges agent files**: an existing `.mcp.json`, `AGENTS.md` or `CLAUDE.md` is merged (only the `eligian` entry, the marked block and the import line change) instead of left untouched; `client` picks the clients and `agents: false` writes none.
-- **CLI 1.1.0**: the `mcp` command. On a 1.0.x install `eligian mcp` is taken as `eligian compile mcp` and fails.
+- **The `mcp` command needs CLI 1.2.0**: on a 1.0.x install `eligian mcp` is taken as `eligian compile mcp` and fails.
 - **`eligian check` defaults**: the review pass runs by default (`--no-review`), and `--selector-not-in-layout` defaults to `ids` for a program that imports a `layout` (`off` turns it off), as in `eligian_check`. `examples/demo.eligian` is checked on its own, without the selector check, in `check:examples` and the publish workflow.
 - **Starters**: `eligian init` projects depend on `eligian` `^1.1.0`.
+
+### Fixed
+
+- **`--bundle` and `eligian dev` carry `loadJson` files**: the local, relative `url` of a `loadJson` operation (for example the animation of a LottieController) is copied into the bundle and rewritten to the copy, and `dev` serves it.
+
+## CLI 1.0.0 and 1.0.1, extension 1.0.0 (2026-11-02)
+
+### Changed
+
 - **Marketplace packaging**: the extension is named `eligian` (the scoped name was refused by vsce) and has an icon, a license, a repository and keywords. `pnpm -C packages/extension run package` builds it minified, without source maps, and packs only the runtime files (21 files, 5 MB), with the LICENSE and this changelog copied in.
 - **CLI 1.0.1**: Effect 4.0.7.
 - **The CLI on npm**: the package is `eligian` (version 1.0.0; `npx eligian init my-talk`). It is self-contained: the language and shared packages are bundled into one minified file, and the package holds only that, the launcher, the README and the LICENSE (455 KB). The `Publish CLI` workflow builds, tests, installs the packed tarball and runs it on the examples before publishing it with npm trusted publishing. `eligian init` projects depend on `eligian` `^1.0.0` instead of the unpublished `@eligian/cli`.
 - **Publishing**: the `Publish extension` workflow (`.github/workflows/publish.yml`, run by hand on `main`) builds, tests and publishes the extension to the Visual Studio Marketplace with Trusted Publishing (OIDC, no stored token), optionally as a pre-release. The extension is at version 1.0.0.
 - **Eligius 4.2.0**: engine errors carry the path of `startAction` / `endAction` calls to the failing operation (`operationPath`). The preview and `eligian smoke` follow it to the one operation that failed, where before an operation at the same index in the caller and in a called action could not be told apart ("or 1 other place"). Without a path the old search remains.
-
-### Fixed
-
-- **`--bundle` and `eligian dev` carry `loadJson` files**: the local, relative `url` of a `loadJson` operation (for example the animation of a LottieController) is copied into the bundle and rewritten to the copy, and `dev` serves it.
-- **Long MCP sessions**: the server recycles the compiler's documents and services every 100 compiler calls, so its heap stays flat (`pnpm -C packages/cli run test:soak`: 200 `eligian_check` calls, at most 25 MB of growth).
 
 ## 2026-10-22 to 2026-11-02: the audit follow-up (#183)
 

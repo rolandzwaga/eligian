@@ -44,7 +44,7 @@ code --install-extension rolandzwaga.eligian
 ### From VSIX
 
 ```bash
-code --install-extension eligian-1.0.0.vsix
+code --install-extension eligian-1.1.0.vsix
 ```
 
 ## Usage
@@ -305,9 +305,21 @@ When you compile, the extension:
 
 ## Coding agents (MCP)
 
-The extension registers the Eligian MCP server (the `eligian_*` tools: docs, operations, check, fmt, init, compile, project, smoke) for Copilot agent mode automatically. You do not need a `.vscode/mcp.json` file; the server appears in **MCP: List Servers** as **Eligian**.
+The extension registers the Eligian MCP server for Copilot agent mode automatically. It gives the agent nine `eligian_*` tools: `brief` (the interview before anything is written), `docs`, `operations`, `check`, `fmt`, `init`, `compile`, `project` and `smoke`. You do not need a `.vscode/mcp.json` file; the server appears in **MCP: List Servers** as **Eligian**.
 
-**Requirement.** The server is the `eligian` CLI package, version 1.1 or later, installed in the folder's own `node_modules` (`<folder>/node_modules/eligian/bin/cli.js`). The extension runs that copy, so the tools match the version your project builds with. When a folder has an older `eligian`, or has `.eligian` files but no `eligian` package, a notification asks to install it, with **Install** and **Don't Ask Again**. It is shown at most once per window, and **Don't Ask Again** turns it off for that workspace. Once the install finishes, the server appears without a reload.
+### Getting started
+
+1. Open your presentation folder and trust it when VS Code asks.
+2. Install the `eligian` CLI in the folder: click **Install** on the notification, or run `npm install --save-dev eligian` (a project from *Eligian: New Presentation…* already lists it in `package.json`; run `npm install`).
+3. Open the Chat view (Ctrl+Alt+I) and choose **Agent** in the mode picker.
+4. Click **Configure Tools** in the chat input and check that the **Eligian** tools are ticked.
+5. If the server is not running, run **MCP: List Servers**, pick **Eligian** and choose **Start Server**.
+
+**How the agent works with it.** For a new presentation, type `/` in the chat input and pick the Eligian server's **new-presentation** prompt with your idea, or simply describe what you want. The agent first interviews you with `eligian_brief`: a few questions per round, each with a recommended answer, and it looks up facts itself instead of asking you. The answers go into `BRIEF.md` next to the program. You confirm the brief and approve the storyboard in a dialog that VS Code shows; the agent cannot do that for you. Until then, the tools that generate or check a new program refuse it. Programs that already existed when the server first ran in the folder are not affected. To add a timeline, a language or a host module to an approved presentation, use the **add-to-presentation** prompt, which runs a short interview for just that addition.
+
+### Details
+
+**Requirement.** The server is the `eligian` CLI package, version 1.1 or later (on npm, 1.2.0 is the first), installed in the folder's own `node_modules` (`<folder>/node_modules/eligian/bin/cli.js`). The extension runs that copy, so the tools match the version your project builds with. When a folder has an older `eligian`, or has `.eligian` files but no `eligian` package, a notification asks to install it, with **Install** and **Don't Ask Again**. It is shown at most once per window, and **Don't Ask Again** turns it off for that workspace. Once the install finishes, the server appears without a reload.
 
 **What Install runs.** **Install** opens a terminal in the folder and runs one command. The package manager is the one of the nearest lockfile (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock` / `bun.lockb`, `package-lock.json`) or `packageManager` field in a `package.json`, found by walking up from the folder; with neither, npm. The command is `<pm> add -D eligian@^1.1` (for npm: `npm install --save-dev eligian@^1.1`). When the folder's `package.json` already declares an `eligian` range that admits 1.1, it is the plain `<pm> install` instead. If a lockfile still pins `eligian` 1.0.x under such a range, the plain install keeps 1.0.x; run `<pm> add -D eligian@^1.1` yourself.
 
