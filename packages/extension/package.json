@@ -314,7 +314,7 @@
   "dependencies": {
     "@eligian/language": "workspace:*",
     "@eligian/shared-utils": "workspace:*",
-    "jquery": "4.0.0",
+    "jquery": "4.1.0",
     "lottie-web": "5.13.0",
     "semver": "7.8.6",
     "vscode-languageclient": "9.0.1",
@@ -328,7 +328,7 @@
     "@vscode/vsce": "4.1.0",
     "concurrently": "10.0.7",
     "esbuild-wasm": "0.28.2",
-    "jsdom": "31.0.0"
+    "jsdom": "31.0.1"
   },
   "vsce": {
     "dependencies": false
