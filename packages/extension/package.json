@@ -323,9 +323,9 @@
   "devDependencies": {
     "@types/jquery": "4.0.1",
     "@types/semver": "7.8.0",
-    "@types/vscode": "1.145.0",
-    "@vitest/ui": "5.1.0",
-    "@vscode/vsce": "4.1.0",
+    "@types/vscode": "1.146.0",
+    "@vitest/ui": "5.1.1",
+    "@vscode/vsce": "4.1.1",
     "concurrently": "10.0.7",
     "esbuild-wasm": "0.28.2",
     "jsdom": "31.0.1"
